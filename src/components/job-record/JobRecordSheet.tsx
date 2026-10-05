@@ -1,5 +1,6 @@
 'use client';
 
+import styles from './job-record-mobile.module.css';
 import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useManpower } from '@/contexts/manpower-provider';
@@ -45,6 +46,7 @@ export default function JobRecordSheet() {
     const { manpowerProfiles } = useManpower();
     const { jobRecords, saveJobRecord, savePlantOrder, jobRecordPlants, lockJobRecordSheet, unlockJobRecordSheet, deleteJobRecordPlant, carryForwardPlantAssignments } = usePlanner();
     const { projects, jobCodes, deleteJobCode } = useGeneral();
+    const sheetViewport = useRef<HTMLDivElement>(null);
     const [currentMonth, setCurrentMonth] = useState(startOfToday());
     const [isAddPlantOpen, setIsAddPlantOpen] = useState(false);
     const [isAddJobCodeOpen, setIsAddJobCodeOpen] = useState(false);
@@ -933,22 +935,22 @@ export default function JobRecordSheet() {
                     <option key={jc.id} value={jc.code} />
                 ))}
             </datalist>
-            <div className="flex flex-col h-full bg-card border rounded-lg">
+            <div className={styles.sheet+" flex flex-col h-full bg-card border rounded-lg"}>
                 {/* --- HEADER --- */}
                 <div className="p-4 border-b bg-card shrink-0 space-y-4">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
+                        <div className={styles.monthControls}>
+                            <Button aria-label="Previous month" variant="outline" size="icon" onClick={() => changeMonth(-1)} disabled={!canGoToPreviousMonth}>
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
                             <span className="text-lg font-semibold flex items-center gap-2">
                                 {format(currentMonth, 'MMMM yyyy')}
                                 {isCurrentSheetLocked && <Lock className="h-4 w-4 text-muted-foreground" />}
                             </span>
-                            <Button variant="outline" size="icon" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
+                            <Button variant="outline" size="icon" aria-label="Next month" onClick={() => changeMonth(1)} disabled={!canGoToNextMonth}>
                                 <ChevronRight className="h-4 w-4" />
                             </Button>
-                            <div className="relative ml-4">
+                            <div className={styles.search}>
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
                                     placeholder="Search by name..."
@@ -958,7 +960,7 @@ export default function JobRecordSheet() {
                                 />
                             </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className={styles.actions}>
                             {canCarryForward && (
                                 <Button onClick={() => carryForwardPlantAssignments(currentMonth)} variant="outline" disabled={!isCurrentMonth || isCurrentSheetLocked}>
                                     <ArrowRightLeft className="mr-2 h-4 w-4"/> Carry Forward
@@ -996,7 +998,7 @@ export default function JobRecordSheet() {
                             )}
                         </div>
                     </div>
-                    <ScrollArea className="w-full">
+                    <div className={styles.plantTabs}>
                          <Tabs value={activeTab || ''} onValueChange={setActiveTab}>
                             <TabsList className="w-full justify-start h-auto">
                                 {allTabs.map(plantName => {
@@ -1024,18 +1026,19 @@ export default function JobRecordSheet() {
                             )})}
                         </TabsList>
                         </Tabs>
-                    </ScrollArea>
+                    </div>
                 </div>
                 
-                <div className="overflow-auto flex-1 relative">
-                    <Table className="min-w-full border-collapse">
+                <div className={styles.dayNavigation}><label htmlFor="job-record-jump-day">Go to day</label><select key={monthKey} id="job-record-jump-day" defaultValue="" onChange={e=>{const viewport=sheetViewport.current;const cell=viewport?.querySelector<HTMLElement>('[data-job-day="'+e.target.value+'"]');if(viewport&&cell){const pinned=window.matchMedia('(max-width: 767px)').matches?140:470;viewport.scrollTo({left:Math.max(0,cell.getBoundingClientRect().left-viewport.getBoundingClientRect().left+viewport.scrollLeft-pinned),behavior:'smooth'});}}}><option value="" disabled>Select date</option>{dayHeaders.map(day=><option key={day} value={day}>{day} {format(currentMonth,'MMM')}</option>)}</select><span>Swipe sideways for days and totals. Expand a row for overtime and comments.</span></div>
+                <div className={styles.viewport+" overflow-auto flex-1 relative"} ref={sheetViewport} tabIndex={0} role="region" aria-label="Job record attendance sheet, scroll for dates and totals">
+                    <Table className={styles.table+" min-w-full border-collapse"}>
                         <thead className="sticky top-0 z-30 bg-card">
                             <TableRow>
                                 <TableHead className="sticky left-0 bg-card z-30 border-r" style={{ minWidth: '120px', width: '120px' }}>S.No / Actions</TableHead>
                                 <TableHead className="sticky bg-card z-30 border-r" style={{ left: '120px', minWidth: '200px', width: '200px' }}>Name / EP No.</TableHead>
                                 <TableHead className="sticky bg-card z-30 border-r" style={{ left: '320px', minWidth: '150px', width: '150px' }}>Plant</TableHead>
                                 {dayHeaders.map(day => (
-                                    <TableHead key={day} className="text-center min-w-[100px] border-r">
+                                    <TableHead key={day} data-job-day={day} className="text-center min-w-[100px] border-r">
                                         {day}
                                     </TableHead>
                                 ))}
@@ -1085,7 +1088,7 @@ export default function JobRecordSheet() {
                                 return (
                                     <React.Fragment key={profile.id}>
                                     <TableRow className={cn(isRowAway && "bg-muted/80")}>
-                                        <TableCell className={cn("sticky left-0 z-20 flex items-center border-r", isRowAway ? "bg-muted/80" : "bg-card")} style={{width: '120px'}}>
+                                        <TableCell className={cn("sticky left-0 z-20 border-r", isRowAway ? "bg-muted/80" : "bg-card")} style={{width: '120px'}}>
                                             <div className="flex items-center">
                                                 <span className="w-6 text-center">{index + 1}</span>
                                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleRow(profile.id)}>

@@ -11,7 +11,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { ALL_PERMISSIONS, type Permission, Role } from '@/lib/types';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import PermissionPicker from './permission-picker';
+import styles from './account.module.css';
 
 const roleSchema = z.object({
   name: z.string().min(1, 'Role name is required'),
@@ -43,7 +44,7 @@ export default function AddRoleDialog({ isOpen, setIsOpen }: AddRoleDialogProps)
 
   const onSubmit = (data: RoleFormValues) => {
     addRole({
-      name: data.name,
+      name: data.name as Role,
       permissions: (data.permissions as Permission[]) || [],
     });
     toast({
@@ -63,7 +64,7 @@ export default function AddRoleDialog({ isOpen, setIsOpen }: AddRoleDialogProps)
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className={styles.dialog} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Add New Role</DialogTitle>
           <DialogDescription>Create a new role and assign permissions.</DialogDescription>
@@ -77,32 +78,9 @@ export default function AddRoleDialog({ isOpen, setIsOpen }: AddRoleDialogProps)
 
           <div className="space-y-2">
             <Label>Permissions</Label>
-            <ScrollArea className="h-64 rounded-md border p-4">
-                <div className="space-y-2">
-                {ALL_PERMISSIONS.map(permission => (
-                    <Controller
-                        key={permission}
-                        name="permissions"
-                        control={form.control}
-                        render={({ field }) => (
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={permission}
-                                    checked={field.value?.includes(permission)}
-                                    onCheckedChange={checked => {
-                                        const value = field.value || [];
-                                        return checked
-                                        ? field.onChange([...value, permission])
-                                        : field.onChange(value.filter(v => v !== permission));
-                                    }}
-                                />
-                                <Label htmlFor={permission} className="font-normal">{formatPermissionName(permission)}</Label>
-                            </div>
-                        )}
-                    />
-                ))}
-                </div>
-            </ScrollArea>
+            <Controller name="permissions" control={form.control} render={({ field }) => (
+              <PermissionPicker value={field.value || []} onChange={field.onChange} />
+            )} />
           </div>
           
           <DialogFooter>

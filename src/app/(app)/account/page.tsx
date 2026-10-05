@@ -1,4 +1,5 @@
 'use client';
+import styles from '@/components/account/account.module.css';
 import { useAuth } from '@/contexts/auth-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -53,6 +54,7 @@ export default function AccountPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
 
   useEffect(() => {
     setNewAppName(appName);
@@ -72,18 +74,18 @@ export default function AccountPage() {
   const visibleUsers = useMemo(() => {
     if (!user) return [];
     const allVisible = getVisibleUsers();
-    return allVisible.filter(u => u.id !== user.id);
-  }, [user, getVisibleUsers, users]);
+    return allVisible.filter(u => u.id !== user.id && [u.name, u.email, u.role].join(' ').toLowerCase().includes(userSearch.trim().toLowerCase()));
+  }, [user, getVisibleUsers, users, userSearch]);
 
   if (loading || !user || !can) {
     return (
-        <div className="space-y-8">
+        <div className={styles.page}>
             <Skeleton className="h-8 w-64" />
-            <div className="grid gap-8 md:grid-cols-3">
-                <div className="md:col-span-1">
+            <div className="grid gap-5 lg:grid-cols-3">
+                <div className="lg:col-span-1">
                     <Skeleton className="h-64 w-full" />
                 </div>
-                <div className="md:col-span-2">
+                <div className="lg:col-span-2">
                     <Skeleton className="h-80 w-full" />
                 </div>
             </div>
@@ -212,9 +214,17 @@ export default function AccountPage() {
         <p className="text-muted-foreground">Manage your profile, team members, and application settings.</p>
       </div>
       
-      <form onSubmit={handleProfileSave}>
+      <nav className={styles.sectionNav} aria-label="Account sections">
+        <a href="#account-profile">My profile</a>
+        {can.manage_users && <a href="#account-users">Users</a>}
+        {(can.manage_roles || user.role === 'Admin') && <a href="#account-roles">Roles & permissions</a>}
+        {can.manage_projects && <a href="#account-projects">Projects</a>}
+        {can.manage_branding && <a href="#account-branding">Branding</a>}
+        {(user.role === 'Admin' || user.role === 'Project Coordinator') && <a href="#account-decoration">Appearance</a>}
+      </nav>
+      <form id="account-profile" onSubmit={handleProfileSave}>
         <div className="grid gap-8 md:grid-cols-3">
-          <div className="md:col-span-1 space-y-8">
+          <div className="lg:col-span-1 space-y-8">
             <Card>
               <CardHeader className="items-center text-center">
                 <Avatar className="h-24 w-24 mb-4">
@@ -227,7 +237,7 @@ export default function AccountPage() {
             </Card>
             {can.manage_user_lock_status && <UnlockRequests />}
           </div>
-          <div className="md:col-span-2">
+          <div className="lg:col-span-2">
               <Card>
                   <CardHeader>
                   <CardTitle>Update Profile</CardTitle>
@@ -236,11 +246,11 @@ export default function AccountPage() {
                   <CardContent className="space-y-4">
                   <div className="space-y-2">
                       <Label htmlFor="name">Full Name</Label>
-                      <Input id="name" value={name} onChange={e => setName(e.target.value)} />
+                      <Input id="name" required value={name} onChange={e => setName(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                      <Input id="email" required type="email" value={email} onChange={e => setEmail(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="current-password">Current Password</Label>
@@ -309,9 +319,9 @@ export default function AccountPage() {
                 <CardDescription>Review and manage user-submitted feedback.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-72">
+              <div className={styles.listArea}>
                 <FeedbackManagement />
-              </ScrollArea>
+              </div>
             </CardContent>
         </Card>
       )}
@@ -319,7 +329,7 @@ export default function AccountPage() {
        {(user.role === 'Admin' || user.role === 'Project Coordinator') && (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2"><PartyPopper/> Decoration Settings</CardTitle>
+                <CardTitle id="account-decoration" className="flex items-center gap-2"><PartyPopper/> Decoration Settings</CardTitle>
                 <CardDescription>Activate a global theme for special occasions.</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center gap-4">
@@ -345,7 +355,7 @@ export default function AccountPage() {
         <Card>
           <form onSubmit={handleBrandingSave}>
             <CardHeader>
-              <CardTitle>Branding Settings</CardTitle>
+              <CardTitle id="account-branding">Branding Settings</CardTitle>
               <CardDescription>Customize the application's logo and title. Changes will apply across the application.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -377,13 +387,13 @@ export default function AccountPage() {
       {can.manage_projects && (
           <Card>
             <CardHeader>
-                <CardTitle>Project Management</CardTitle>
+                <CardTitle id="account-projects">Project Management</CardTitle>
                 <CardDescription>Add, edit, or remove project locations.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-72">
+              <div className={styles.listArea}>
                 <ProjectManagementTable />
-              </ScrollArea>
+              </div>
             </CardContent>
           </Card>
       )}
@@ -391,22 +401,22 @@ export default function AccountPage() {
       {(can.manage_roles || user.role === 'Admin') && (
           <Card>
             <CardHeader>
-                <CardTitle>Role Management</CardTitle>
+                <CardTitle id="account-roles">Roles & Permissions</CardTitle>
                 <CardDescription>Define custom roles and assign granular permissions.</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-72">
+              <div className={styles.listArea}>
                 <RoleManagementTable />
-              </ScrollArea>
+              </div>
             </CardContent>
           </Card>
       )}
 
       {can.manage_users && (
       <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className={styles.sectionHeader}>
               <div>
-                  <CardTitle>User Account Management</CardTitle>
+                  <CardTitle id="account-users">User Accounts</CardTitle>
                   <CardDescription>View, add, edit, or remove user accounts.</CardDescription>
               </div>
               {can.manage_users && (
@@ -417,8 +427,10 @@ export default function AccountPage() {
               )}
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-96">
-              <Table>
+            <Input aria-label="Search user accounts" placeholder="Search name, email or role..." value={userSearch} onChange={e => setUserSearch(e.target.value)} className="mb-4" />
+            <p className="text-xs text-muted-foreground mb-3">{visibleUsers.length} users</p>
+            <div className={styles.listArea}>
+              <Table className={styles.userTable}>
                   <TableHeader>
                       <TableRow>
                           <TableHead>User</TableHead>
@@ -450,8 +462,8 @@ export default function AccountPage() {
                                         </div>
                                     </div>
                                 </TableCell>
-                                <TableCell>{report.role}</TableCell>
-                                <TableCell>{supervisor?.name || 'N/A'}</TableCell>
+                                <TableCell data-label="Role">{report.role}</TableCell>
+                                <TableCell data-label="Supervisor">{supervisor?.name || 'N/A'}</TableCell>
                                 <TableCell>
                                     {report.canApproveTransfers && (
                                         <Tooltip>
@@ -465,12 +477,12 @@ export default function AccountPage() {
                                     )}
                                 </TableCell>
                                 {can.manage_users && (
-                                    <TableCell className="text-right">
+                                    <TableCell data-label="Actions" className="text-right">
                                         <AlertDialog>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <Button variant="ghost" className="h-8 w-8 p-0">
-                                                        <span className="sr-only">Open menu</span>
+                                                        <span className="sr-only">Actions for {report.name}</span>
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
@@ -487,7 +499,7 @@ export default function AccountPage() {
                                                     </AlertDialogTrigger>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
-                                            <AlertDialogContent>
+                                            <AlertDialogContent className={styles.dialog}>
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>Remove User Access?</AlertDialogTitle>
                                                     <AlertDialogDescription>
@@ -509,7 +521,7 @@ export default function AccountPage() {
                     </TooltipProvider>
                   </TableBody>
               </Table>
-              </ScrollArea>
+              </div>
           </CardContent>
       </Card>
       )}

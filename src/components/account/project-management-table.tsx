@@ -1,4 +1,5 @@
 'use client';
+import styles from './account.module.css';
 
 import React, { useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -42,7 +43,7 @@ export default function ProjectManagementTable() {
                 </Button>
             </div>
             <div className="overflow-x-auto">
-              <Table>
+              <Table className={styles.managementTable}>
                   <TableHeader>
                       <TableRow>
                           <TableHead>Project Name</TableHead>
@@ -52,19 +53,19 @@ export default function ProjectManagementTable() {
                   <TableBody>
                       {projects.map(project => (
                           <TableRow key={project.id}>
-                              <TableCell className="font-medium">{project.name}</TableCell>
-                              <TableCell className="text-right">
+                              <TableCell data-label="Project" className="font-medium">{project.name}</TableCell>
+                              <TableCell data-label="Actions" className="text-right">
                                   <div className="flex items-center justify-end gap-2">
-                                      <Button variant="ghost" size="icon" onClick={() => handleEditClick(project)}>
+                                      <Button variant="ghost" size="icon" aria-label={`Edit ${project.name}`} onClick={() => handleEditClick(project)}>
                                           <Edit className="h-4 w-4" />
                                       </Button>
                                       <AlertDialog>
                                           <AlertDialogTrigger asChild>
-                                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                              <Button variant="ghost" size="icon" aria-label={`Delete ${project.name}`} className="text-destructive hover:text-destructive">
                                                   <Trash2 className="h-4 w-4" />
                                               </Button>
                                           </AlertDialogTrigger>
-                                          <AlertDialogContent>
+                                          <AlertDialogContent className={styles.dialog}>
                                               <AlertDialogHeader>
                                                   <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                   <AlertDialogDescription>

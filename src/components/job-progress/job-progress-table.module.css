@@ -1,0 +1,48 @@
+.root { display:flex; flex-direction:column; height:100%; min-height:0; min-width:0; color:#172b4d; }
+.hint { flex-shrink:0; padding:7px 12px; font-size:11px; color:#64748b; }
+.scroll { flex:1; min-height:0; min-width:0; overflow:auto; position:relative; border:1px solid #cbd9eb; border-radius:8px; }
+.table { width:100%; min-width:1650px; border-collapse:separate; border-spacing:0; table-layout:fixed; font-size:12px; }
+.table thead { position:sticky; top:0; z-index:2; }
+.table th { background:#f0f5fc; text-align:left; padding:10px 9px; font-size:11px; font-weight:600; border-bottom:1px solid #cbd9eb; border-right:1px solid #cbd9eb; color:#243c63; }
+.table th.stageHeading { text-align:center; padding:8px 5px; height:49px; font-size:10px; line-height:1.4;  }
+.table td { padding:12px 9px; border-bottom:1px solid #cbd9eb; border-right:1px solid #cbd9eb; vertical-align:middle; overflow-wrap:anywhere; }
+.table tr > :last-child { border-right:0; }
+.jobRow { background:#fff; cursor:pointer; transition:background .15s; }
+.jobRow:nth-child(even) { background:#edf4fc; }
+.jobRow:hover, .jobRow:focus-within { background:#dfeeff; }
+.jobButton { border:0; background:none; padding:0; color:inherit; text-align:left; font-weight:600; line-height:1.45; cursor:pointer; }
+.jobButton:focus-visible, .stageButton:focus-visible { outline:2px solid #2563eb; outline-offset:3px; border-radius:4px; }
+.jobButton:hover { color:#2563eb; }
+.secondary { display:block; margin-top:4px; color:#64748b; font-size:11px; line-height:1.4; }
+.jmsNumber { color:#2563eb; font-weight:600; }
+.table .amount { text-align:right; font-variant-numeric:tabular-nums; }
+.serial { text-align:center; color:#64748b; }
+.person { display:flex; gap:8px; align-items:center; }
+.personText { min-width:0; line-height:1.4; }
+.personText strong { font-weight:600; }
+.dates { white-space:nowrap; font-size:11px; font-variant-numeric:tabular-nums; }
+.returned, .completedLabel { display:inline-flex; align-items:center; gap:4px; padding:2px 6px; margin-top:6px; border-radius:4px; font-size:10px; }
+.returned { color:#be123c; background:#ffe4e6; }
+.completedLabel { color:#15803d; background:#dcfce7; }
+.table .stageCell { padding:12px 0; text-align:center; --stage:#aab6c6; }
+.stageCell[data-state=complete] { --stage:#16a34a; }
+.stageCell[data-state=pending] { --stage:#d97706; }
+.stageCell[data-state=unacknowledged] { --stage:#e11d48; }
+.stageTrack { position:relative; }
+.stageTrack::before { content:''; position:absolute; left:0; right:0; top:11px; height:1px; background:#bac6d5; }
+.stageCell[data-state=complete] .stageTrack::before { background:#4ade80; }
+.stageTrack[data-first=true]::before { left:50%; }
+.stageTrack[data-last=true]::before { right:50%; }
+.stageButton { position:relative; display:flex; flex-direction:column; align-items:center; width:100%; border:0; padding:0 2px; background:transparent; cursor:pointer; color:var(--stage); gap:7px; }
+.node { display:flex; justify-content:center; align-items:center; width:22px; height:22px; border:2px solid var(--stage); border-radius:50%; background:#fff; box-shadow:0 0 0 3px #f4f8fc; }
+.stageCell[data-state=complete] .node { background:#16a34a; color:white; }
+.node[data-overdue=true] { box-shadow:0 0 0 3px #ffe4e6; }
+.stageDate { height:15px; line-height:15px; white-space:nowrap; font-size:10px; font-variant-numeric:tabular-nums; }
+.footer { flex-shrink:0; display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; padding:10px 12px; font-size:10px; color:#64748b; }
+.counts, .legend { display:flex; flex-wrap:wrap; align-items:center; gap:12px; }
+.legend span { display:inline-flex; align-items:center; gap:5px; }
+.green { color:#16a34a; }.amber { color:#d97706; }.red { color:#e11d48; }
+.idleDot, .overdueDot { width:12px; height:12px; border:2px solid #aab6c6; border-radius:50%; }
+.overdueDot { border-color:#e11d48; box-shadow:0 0 0 2px #ffe4e6; }
+.empty { display:flex; align-items:center; justify-content:center; height:100%; min-height:120px; border:1px dashed #cbd5e1; border-radius:8px; color:#64748b; }
+@media(max-width:640px) { .footer { padding:8px; } .stageButton { min-height:44px; } }

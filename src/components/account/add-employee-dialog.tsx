@@ -1,4 +1,5 @@
 'use client';
+import styles from './account.module.css';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -94,13 +95,13 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className={styles.dialog} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
           <DialogDescription>Fill in the details to add a new member to the team.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <ScrollArea className="max-h-[70vh] p-1">
+          <div className={styles.formFields}>
             <div className="space-y-4 p-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
@@ -231,7 +232,7 @@ export default function AddEmployeeDialog({ isOpen, setIsOpen }: AddEmployeeDial
                   />
               </div>
             </div>
-          </ScrollArea>
+          </div>
           <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Add User</Button>

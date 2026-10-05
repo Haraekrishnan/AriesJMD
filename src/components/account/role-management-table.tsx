@@ -1,4 +1,5 @@
 'use client';
+import styles from './account.module.css';
 
 import React, { useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -44,7 +45,7 @@ export default function RoleManagementTable() {
                 </Button>
             </div>
             <div className="overflow-x-auto">
-              <Table>
+              <Table className={styles.managementTable}>
                   <TableHeader>
                       <TableRow>
                           <TableHead>Role Name</TableHead>
@@ -59,8 +60,8 @@ export default function RoleManagementTable() {
                           const permissions = role.permissions || [];
                           return (
                           <TableRow key={role.id}>
-                              <TableCell className="font-medium">{role.name}</TableCell>
-                              <TableCell>
+                              <TableCell data-label="Role" className="font-medium">{role.name}</TableCell>
+                              <TableCell data-label="Permissions">
                                   <div className="flex flex-wrap gap-1 max-w-md">
                                       {permissions.map(permission => (
                                           <Badge key={permission} variant="secondary">
@@ -70,20 +71,20 @@ export default function RoleManagementTable() {
                                       {permissions.length === 0 && <span className="text-xs text-muted-foreground">No permissions</span>}
                                   </div>
                               </TableCell>
-                              <TableCell className="text-right">
+                              <TableCell data-label="Actions" className="text-right">
                                   {isActionable ? (
                                       <div className="flex items-center justify-end gap-2">
-                                          <Button variant="ghost" size="icon" onClick={() => handleEditClick(role)}>
+                                          <Button variant="ghost" size="icon" aria-label={`Edit ${role.name}`} onClick={() => handleEditClick(role)}>
                                               <Edit className="h-4 w-4" />
                                           </Button>
                                           {canDelete && (
                                               <AlertDialog>
                                                   <AlertDialogTrigger asChild>
-                                                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                                      <Button variant="ghost" size="icon" aria-label={`Delete ${role.name}`} className="text-destructive hover:text-destructive">
                                                           <Trash2 className="h-4 w-4" />
                                                       </Button>
                                                   </AlertDialogTrigger>
-                                                  <AlertDialogContent>
+                                                  <AlertDialogContent className={styles.dialog}>
                                                       <AlertDialogHeader>
                                                           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                           <AlertDialogDescription>

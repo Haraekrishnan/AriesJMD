@@ -1,5 +1,6 @@
 
 'use client';
+import styles from './account.module.css';
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -46,7 +47,7 @@ export default function EditProjectDialog({ isOpen, setIsOpen, project }: EditPr
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className={styles.dialog} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Project: {project.name}</DialogTitle>
           <DialogDescription>Update the name of the project.</DialogDescription>

@@ -1,4 +1,5 @@
 'use client';
+import styles from '@/components/tp-certification/tp-mobile.module.css';
 import { tpItemKey, tpItemCondition, setTpItemConditions } from '@/components/tp-certification/item-condition';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useInventory } from '@/contexts/inventory-provider';
@@ -233,7 +234,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
       return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
           <DialogContent 
-            className="max-w-4xl h-[90vh] flex flex-col"
+            className={styles.dialog + " max-w-4xl h-[90vh] flex flex-col"}
           >
             <DialogHeader>
               <DialogTitle>{existingList ? "Edit TP Certification List" : "Generate TP Certification List"}</DialogTitle>
@@ -282,8 +283,8 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                  </div>
             </div>
 
-            <div className="flex-1 mt-4 border rounded-md overflow-hidden">
-              <ScrollArea className="h-full">
+            <div className={styles.dialogList}>
+              <div>
                 <div className="flex flex-wrap items-center gap-2 p-3 border-b"><span className="text-sm font-medium">Set item condition:</span>{(['New','Old'] as const).map(condition => <Button key={condition} type="button" size="sm" variant="outline" disabled={!selectedItems.some(item => checkedItems.has(tpItemKey(item)))} onClick={() => setSelectedItems(previous => setTpItemConditions(previous, checkedItems, condition))}>Selected → {condition}</Button>)}{(['New','Old'] as const).map(condition => <Button key={condition} type="button" size="sm" variant="outline" disabled={!selectedItems.length} onClick={() => setSelectedItems(previous => setTpItemConditions(previous, new Set(previous.map(tpItemKey)), condition))}>All → {condition}</Button>)}</div><Table>
                   <TableHeader>
                     <TableRow>
@@ -320,10 +321,10 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                     )}
                   </TableBody>
                 </Table>
-              </ScrollArea>
+              </div>
             </div>
 
-            <DialogFooter className="pt-4 justify-between">
+            <DialogFooter className={styles.dialogFooter}>
               <div className='flex gap-2 items-center'>
                 <Input 
                   placeholder="Enter list name..." 

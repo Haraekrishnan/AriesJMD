@@ -352,13 +352,14 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     }, [user]);
 
     const saveJobSchedule = useCallback((schedule: Omit<JobSchedule, 'id'> & { id?: string }) => {
+        if (!user || !can.manage_job_schedule) return;
         const id = schedule.id || `schedule_${schedule.date}`;
         // Sanitize object for Firebase (removes undefined)
         const sanitizedSchedule = JSON.parse(JSON.stringify(schedule, (key, value) =>
             value === undefined ? null : value
         ));
         update(ref(rtdb, `jobSchedules/${id}`), { ...sanitizedSchedule, id });
-    }, []);
+    }, [user, can.manage_job_schedule]);
 
     const savePlantOrder = useCallback((monthKey: string, plantName: string, orderedProfileIds: string[]) => {
         const path = `jobRecords/${monthKey}/plantsOrder/${plantName}`;

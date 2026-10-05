@@ -1,4 +1,5 @@
 'use client';
+import styles from './account.module.css';
 
 import { useAppContext } from "@/contexts/app-provider";
 import { Button } from "@/components/ui/button";
@@ -37,8 +38,8 @@ export default function UnlockRequests() {
             </CardHeader>
             <CardContent>
                 {pendingRequests.length > 0 ? (
-                  <ScrollArea className="h-48">
-                    <Table>
+                  <div className={styles.listArea}>
+                    <Table className={styles.managementTable}>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>User</TableHead>
@@ -49,9 +50,9 @@ export default function UnlockRequests() {
                         <TableBody>
                             {pendingRequests.map(req => (
                                 <TableRow key={req.id}>
-                                    <TableCell>{req.userName}</TableCell>
-                                    <TableCell>{formatDistanceToNow(parseISO(req.date), { addSuffix: true })}</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell data-label="User">{req.userName}</TableCell>
+                                    <TableCell data-label="Requested">{formatDistanceToNow(parseISO(req.date), { addSuffix: true })}</TableCell>
+                                    <TableCell data-label="Actions" className="text-right">
                                         <Button size="sm" onClick={() => handleResolve(req.id, req.userId)}>
                                             <ShieldCheck className="mr-2 h-4 w-4" /> Unlock
                                         </Button>
@@ -60,7 +61,7 @@ export default function UnlockRequests() {
                             ))}
                         </TableBody>
                     </Table>
-                  </ScrollArea>
+                  </div>
                 ) : (
                     <p className="text-sm text-muted-foreground text-center py-4">No pending unlock requests.</p>
                 )}

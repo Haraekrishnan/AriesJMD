@@ -62,7 +62,7 @@ export default function JobSchedulePage() {
     };
 
     const handleAddSchedule = () => {
-        if (!user) return;
+        if (!user || !can.manage_job_schedule) return;
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         const newId = `schedule_${dateStr}_${Date.now()}`;
         saveJobSchedule({
@@ -81,7 +81,7 @@ export default function JobSchedulePage() {
     };
 
     const handleToggleLock = () => {
-        if (!activeSchedule || !user) return;
+        if (!activeSchedule || !user || !can.manage_job_schedule) return;
         saveJobSchedule({
             ...activeSchedule,
             isLocked: !isLocked,
@@ -93,6 +93,7 @@ export default function JobSchedulePage() {
     };
 
     const handleDeleteSchedule = (id: string) => {
+        if (!user || !can.manage_job_schedule) return;
         remove(ref(rtdb, `jobSchedules/${id}`));
         toast({ title: 'Schedule Deleted', variant: 'destructive' });
     };
@@ -179,7 +180,7 @@ export default function JobSchedulePage() {
         };
     }, [schedulesForDate, manpowerProfiles, users]);
 
-    if (!can.manage_job_schedule && !can.view_all) {
+    if (!can.manage_job_schedule && !can.view_job_schedule && !can.view_all) {
         return (
             <Card className="w-full max-w-md mx-auto mt-20">
                <CardHeader className="text-center items-center">
@@ -198,7 +199,7 @@ export default function JobSchedulePage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Job Schedule</h1>
-                    <p className="text-muted-foreground">Plan and view the daily job schedule.</p>
+                    <p className="text-muted-foreground">{can.manage_job_schedule ? "Plan and view the daily job schedule." : "View-only access: choose a date to view or download its schedules."}</p>
                 </div>
                 <div className="flex gap-2">
                     <Dialog open={isBatchExportOpen} onOpenChange={setIsBatchExportOpen}>
@@ -336,7 +337,7 @@ export default function JobSchedulePage() {
                         <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg m-4">
                             <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
                             <p className="text-lg font-semibold">No schedules for this day.</p>
-                            <p className="text-sm">Click "Add Schedule" to create one.</p>
+                            <p className="text-sm">{can.manage_job_schedule ? 'Click "Add Schedule" to create one.' : 'Choose another date to view its schedules.'}</p>
                         </div>
                     )}
                 </CardContent>

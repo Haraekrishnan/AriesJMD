@@ -1,0 +1,49 @@
+.page { display:flex; flex-direction:column; gap:24px; min-width:0; max-width:100%; }
+.page > *, .page form, .page [class*="col-span"] { min-width:0; max-width:100%; }
+.page h1 { font-size:clamp(24px,3vw,30px); }
+.page [id^="account-"] { scroll-margin-top:90px; }
+.sectionNav { display:flex; flex-wrap:wrap; gap:8px; padding:12px; border:1px solid #dce6f2; border-radius:12px; background:var(--background,#fff); }
+.sectionNav a { padding:10px 14px; border-radius:7px; font-size:13px; font-weight:500; background:#edf4fc; color:#244c86; text-decoration:none; }
+.sectionNav a:hover, .sectionNav a:focus-visible { background:#dceaff; outline-color:#2563eb; }
+.sectionHeader { display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.listArea { width:100%; min-width:0; max-height:600px; overflow:auto; overscroll-behavior:contain; }
+.userTable, .managementTable { width:100%; }
+.userTable td, .managementTable td { overflow-wrap:anywhere; }
+.userTable td:first-child { min-width:200px; }
+.dialog { width:calc(100vw - 24px) !important; max-width:600px !important; max-height:90dvh; overflow-y:auto; overscroll-behavior:contain; padding:24px; }
+.dialog form, .dialog input, .dialog button { max-width:100%; min-width:0; }
+.formFields { min-width:0; }
+.formFields > div { padding:4px; }
+.permissions { display:flex; flex-direction:column; gap:10px; }
+.permissionSummary { font-size:12px; color:#64748b; }
+.permissionList { max-height:42dvh; min-height:160px; overflow:auto; border:1px solid #dce6f2; border-radius:8px; overscroll-behavior:contain; }
+.permissionOption { display:flex; align-items:flex-start; gap:12px; padding:12px; min-height:46px; border-bottom:1px solid #e5edf7; font-size:13px; cursor:pointer; line-height:1.4; }
+.permissionOption:hover { background:#edf4fc; }
+.permissionOption input { width:18px; height:18px; flex-shrink:0; margin-top:1px; accent-color:#2563eb; }
+.permissionOption span { min-width:0; }
+.permissionOption small { display:block; font-size:11px; color:#64748b; margin-top:3px; }
+@media(max-width:640px) {
+ .page { gap:18px; }
+ .page input:not([type=checkbox]), .dialog input:not([type=checkbox]), .dialog textarea { font-size:16px; }
+ .page button, .dialog button { min-height:44px; }
+ .page [role=combobox] { width:100%; }
+ .sectionNav { gap:6px; padding:8px; }
+ .sectionNav a { flex:1 1 42%; text-align:center; }
+ .sectionHeader { align-items:stretch; }
+ .sectionHeader > button { width:100%; }
+ .listArea { max-height:none; overflow:visible; }
+ .userTable, .managementTable, .userTable tbody, .managementTable tbody { display:block; }
+ .userTable thead, .managementTable thead { display:none; }
+ .userTable tbody tr, .managementTable tbody tr { display:block; margin-bottom:12px; padding:12px; border:1px solid #dce6f2; border-radius:10px; background:#fff; }
+ .userTable td, .managementTable td { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; width:100%; padding:8px 0; border:0; text-align:left; min-width:0 !important; }
+ .userTable td::before, .managementTable td::before { content:attr(data-label); color:#64748b; font-size:11px; min-width:70px; flex-shrink:0; padding-top:3px; }
+ .userTable td:first-child { display:block; }
+ .userTable td:first-child::before { display:none; }
+ .userTable td > *, .managementTable td > * { min-width:0; }
+ .userTable td:first-child > div > div:last-child { min-width:0; }
+ .managementTable td[data-label=Permissions] { flex-direction:column; }
+ .managementTable td[data-label=Permissions] span { white-space:normal; overflow-wrap:anywhere; }
+ .dialog { padding:16px; }
+ .dialog [role=dialog] { max-width:100%; }
+ .permissionList { max-height:38dvh; }
+}

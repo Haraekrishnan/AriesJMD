@@ -43,7 +43,7 @@ export default function ReadOnlyJobSchedule({ schedule }: ReadOnlyJobSchedulePro
 
   return (
     <div className="overflow-x-auto">
-      <Table className="text-[11px]">
+      <Table className="text-[11px] min-w-[1000px]">
         <TableHeader>
           <TableRow className="bg-muted/30">
               <TableHead className="w-[50px] text-center">Sr.</TableHead>

@@ -1,238 +1,128 @@
 'use client';
 
 import { useMemo } from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
-import type { JobProgress } from '@/lib/types';
+import { JOB_PROGRESS_STEPS, type JobProgress } from '@/lib/types';
 import { format, parseISO, isValid, differenceInDays } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { Check, Clock, Undo2, User } from 'lucide-react';
-import { JOB_PROGRESS_STEPS } from '@/lib/types';
+import { Check, Clock, Undo2, AlertCircle, Minus } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import styles from './job-progress-table.module.css';
 
 interface JobProgressTableProps {
   jobs: JobProgress[];
   onViewJob: (job: JobProgress) => void;
 }
 
+const stageLabels = ['JMS Created', 'Sent to Site', 'Handed Over', 'Submitted', 'Endorsed', 'Sent to Office', 'JMS No. Created', 'Hard Copy Sent Back to Site', 'Hard Copy Submitted'];
+const formatDate = (value?: string | null, pattern = 'dd-MM-yy') => {
+  if (!value) return '';
+  const date = parseISO(value);
+  return isValid(date) ? format(date, pattern) : '';
+};
+
 export function JobProgressTable({ jobs, onViewJob }: JobProgressTableProps) {
   const { users } = useAuth();
   const { projects } = useGeneral();
+  const sortedJobs = useMemo(() => [...jobs].sort((a, b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime()), [jobs]);
 
-  const sortedJobs = useMemo(() => {
-    return [...jobs].sort((a, b) => parseISO(b.createdAt).getTime() - parseISO(a.createdAt).getTime());
-  }, [jobs]);
-
-  const formatDate = (dateString?: string | null) => {
-    if (!dateString) return '';
-    const date = parseISO(dateString);
-    return isValid(date) ? format(date, 'dd-MM-yy') : '';
-  };
-
-  if (jobs.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full border-2 border-dashed rounded-lg bg-muted/20">
-        <p className="text-muted-foreground">No JMS records found for this period.</p>
-      </div>
-    );
-  }
+  if (!jobs.length) return <div className={styles.empty}>No JMS records found for this period.</div>;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className={styles.root}>
+      <div className={styles.hint}>Click a row to view details</div>
       <TooltipProvider>
-        <div className="flex-1 overflow-auto relative">
-          <div className="min-w-max h-full">
-            <Table className="h-full w-full border-collapse text-[11px] font-sans">
-              <TableHeader className="sticky top-0 z-40">
-                <TableRow className="bg-[#D9E2F3] hover:bg-[#D9E2F3] border-b-2 border-black">
-                  <TableHead className="w-10 border-r border-black text-black font-bold text-center md:sticky md:left-0 md:z-50 bg-[#D9E2F3]">SL</TableHead>
-                  <TableHead className="w-32 border-r border-black text-black font-bold md:sticky md:left-[40px] md:z-50 bg-[#D9E2F3]">WO / ARC NO</TableHead>
-                  <TableHead className="w-40 border-r border-black text-black font-bold md:sticky md:left-[168px] md:z-50 bg-[#D9E2F3]">PLANT / UNIT</TableHead>
-                  <TableHead className="w-64 border-r border-black text-black font-bold md:sticky md:left-[328px] md:z-50 bg-[#D9E2F3]">JOB DESCRIPTION</TableHead>
-                  <TableHead className="w-36 border-r-2 border-black text-black font-bold md:sticky md:left-[584px] md:z-50 bg-[#D9E2F3] md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]">JMS NO</TableHead>
-                  
-                  <TableHead className="w-28 border-r-2 border-black text-black font-bold text-right">VALUE (INR)</TableHead>
-                  
-                  {/* New Summary Column */}
-                  <TableHead className="w-48 border-r-2 border-black bg-[#FFF8E1] text-[#7A5B3E] font-black uppercase text-center tracking-tighter">
-                    Current Action / Responsibility
-                  </TableHead>
-
-                  <TableHead className="w-24 border-r border-black text-black font-bold text-center">START</TableHead>
-                  <TableHead className="w-24 border-r-2 border-black text-black font-bold text-center">END</TableHead>
-                  
-                  {JOB_PROGRESS_STEPS.map((stepName) => (
-                    <TableHead 
-                      key={stepName} 
-                      className="w-32 border-r border-slate-300 text-black font-bold text-center leading-tight px-1"
-                    >
-                      {stepName.toUpperCase()}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedJobs.map((job, index) => {
-                  const project = projects.find(p => p.id === job.projectId);
-                  const isEven = index % 2 !== 0;
-                  const rowBg = isEven ? "bg-slate-50 dark:bg-slate-800" : "bg-white dark:bg-slate-900";
-                  
-                  // Logic to find current active step
-                  const currentStep = job.status === 'Completed' 
-                    ? job.steps[job.steps.length - 1] 
-                    : (job.steps.find(s => s.status !== 'Completed') || job.steps[job.steps.length - 1]);
-                  
-                  const activeAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
-                  const isJobReturned = job.steps.some(s => s.isReturned);
-
-                  return (
-                    <TableRow 
-                      key={job.id} 
-                      className={cn(
-                        "hover:bg-blue-100/50 cursor-pointer border-b border-slate-300 transition-colors",
-                        rowBg
-                      )}
-                      onClick={() => onViewJob(job)}
-                    >
-                      <TableCell className={cn("border-r border-slate-300 text-center font-bold md:sticky md:left-0 md:z-20", rowBg)}>{index + 1}</TableCell>
-                      <TableCell className={cn("border-r border-slate-300 font-semibold md:sticky md:left-[40px] md:z-20", rowBg)}>{job.workOrderNo || 'N/A'}</TableCell>
-                      <TableCell className={cn("border-r border-slate-300 uppercase font-bold md:sticky md:left-[168px] md:z-20", rowBg)}>{project?.name || 'N/A'}{job.plantUnit ? ` / ${job.plantUnit}` : ''}</TableCell>
-                      <TableCell className={cn("border-r border-slate-300 font-medium uppercase md:sticky md:left-[328px] md:z-20", rowBg)}>{job.title}</TableCell>
-                      <TableCell className={cn("border-r-2 border-black text-blue-700 font-bold md:sticky md:left-[584px] md:z-20 md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]", rowBg)}>{job.jmsNo || '-'}</TableCell>
-                      
-                      <TableCell className="border-r-2 border-black text-right font-bold text-[11px] text-foreground">
-                        {job.amount ? new Intl.NumberFormat('en-IN').format(job.amount) : '-'}
-                      </TableCell>
-
-                      {/* Summary Cell Content */}
-                      <TableCell className="border-r-2 border-black bg-[#FFFBF0]/50 p-2 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                           {isJobReturned ? (
-                               <Badge variant="destructive" className="h-4 py-0 text-[8px] font-black animate-pulse">
-                                   <Undo2 className="h-2 w-2 mr-1" /> RETURNED
-                               </Badge>
-                           ) : job.status === 'Completed' ? (
-                               <Badge variant="success" className="h-4 py-0 text-[8px] font-black">COMPLETED</Badge>
-                           ) : null}
-                           
-                           <span className="font-black uppercase text-[10px] text-slate-800 leading-none">
-                                {currentStep?.name || 'N/A'}
-                           </span>
-
-                           {activeAssignee && job.status !== 'Completed' && (
-                               <div className="flex items-center gap-1.5 mt-1">
-                                   <Avatar className="h-4 w-4 border border-slate-300">
-                                       <AvatarImage src={activeAssignee.avatar} />
-                                       <AvatarFallback className="text-[6px]">{activeAssignee.name[0]}</AvatarFallback>
-                                   </Avatar>
-                                   <span className="font-bold text-[9px] text-blue-700 truncate max-w-[80px]">
-                                       {activeAssignee.name}
-                                   </span>
-                               </div>
-                           )}
-                        </div>
-                      </TableCell>
-
-                      <TableCell className="border-r border-slate-300 text-center text-[11px] text-foreground">{formatDate(job.dateFrom)}</TableCell>
-                      <TableCell className="border-r-2 border-black text-center text-[11px] text-foreground">{formatDate(job.dateTo)}</TableCell>
-
-                      {JOB_PROGRESS_STEPS.map((stepName) => {
-                        const stepsWithThisName = job.steps.filter(s => s.name === stepName);
-                        const step = stepsWithThisName.find(s => s.status !== 'Completed') || [...stepsWithThisName].reverse()[0];
-                        
-                        const isCompleted = step?.status === 'Completed';
-                        const isUnacknowledged = step?.status === 'Pending' || step?.isReturned;
-                        const isAcknowledgedPending = step?.status === 'Acknowledged';
-                        const assignee = step ? users.find(u => u.id === step.assigneeId) : null;
-                        
-                        const daysElapsed = differenceInDays(new Date(), parseISO(job.lastUpdated));
-                        const isLongDelay = daysElapsed > 2 && (isUnacknowledged || isAcknowledgedPending);
-
-                        return (
-                          <TableCell 
-                            key={stepName} 
-                            className={cn(
-                              "border-r border-slate-300 p-1 text-center min-h-[40px] group text-[11px] relative",
-                              isCompleted && "bg-green-50/20",
-                              isUnacknowledged ? "bg-orange-50/40" : (isAcknowledgedPending ? "bg-yellow-50/40" : "")
-                            )}
-                          >
-                            {isLongDelay && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-600 z-10" />}
-                            {isCompleted ? (
-                              <div className="flex flex-col items-center gap-0.5">
-                                <Check className="h-3 w-3 text-green-600" />
-                                <span className="text-green-700 font-bold">{formatDate(step.completedAt)}</span>
-                              </div>
-                            ) : (isUnacknowledged || isAcknowledgedPending) ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <div className="flex flex-col items-center gap-0.5 px-1">
-                                    <div className="flex items-center gap-1">
-                                      {isLongDelay && <Clock className="h-3 w-3 text-red-600" />}
-                                      <Badge 
-                                        variant={step?.isReturned ? "destructive" : "outline"} 
-                                        className={cn(
-                                          "text-[10px] h-4 px-1 py-0 font-black",
-                                          isUnacknowledged 
-                                            ? "bg-orange-100 text-orange-700 border-orange-300" 
-                                            : "bg-yellow-100 text-yellow-800 border-yellow-500",
-                                          isLongDelay && "border-red-500 shadow-[0_0_2px_rgba(220,38,38,0.5)]"
-                                        )}
-                                      >
-                                        {step?.isReturned ? 'RETURNED' : isUnacknowledged ? 'NOT ACK' : 'PENDING'}
-                                      </Badge>
-                                    </div>
-                                    <span className="font-bold truncate w-full text-center text-foreground" title={assignee?.name}>
-                                      {assignee ? assignee.name.split(' ')[0] : 'Unassigned'}
-                                    </span>
-                                  </div>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <div className="text-xs space-y-1">
-                                    <p className={cn("font-bold", isLongDelay && "text-red-600")}>
-                                      {isLongDelay ? 'ACTION OVERDUE' : (isUnacknowledged ? 'Awaiting Acknowledgment' : 'In Progress')}
-                                    </p>
-                                    <p>{daysElapsed} days since last update</p>
-                                    {assignee && <p className="italic">Current: {assignee.name}</p>}
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            ) : null}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+        <div className={styles.scroll} role="region" aria-label="JMS tracker table" tabIndex={0}>
+          <table className={styles.table}>
+            <colgroup>
+              <col style={{ width: '3%' }} /><col style={{ width: '13%' }} /><col style={{ width: '8%' }} />
+              <col style={{ width: '6%' }} /><col style={{ width: '6%' }} /><col style={{ width: '12%' }} /><col style={{ width: '7%' }} />
+              {JOB_PROGRESS_STEPS.map(name => <col key={name} style={{ width: '5%' }} />)}
+            </colgroup>
+            <thead>
+              <tr>
+                <th rowSpan={2} scope="col">#</th><th rowSpan={2} scope="col">Job / W.O.</th>
+                <th rowSpan={2} scope="col">Plant / Unit</th><th rowSpan={2} scope="col">JMS No.</th>
+                <th rowSpan={2} scope="col" className={styles.amount}>Value (INR)</th>
+                <th rowSpan={2} scope="col">Current action / Assignee</th><th rowSpan={2} scope="col">Start / End</th>
+                <th colSpan={JOB_PROGRESS_STEPS.length} scope="colgroup">Workflow</th>
+              </tr>
+              <tr>{JOB_PROGRESS_STEPS.map((name, index) => <th key={name} scope="col" title={name} className={styles.stageHeading}>{stageLabels[index]}</th>)}</tr>
+            </thead>
+            <tbody>
+              {sortedJobs.map((job, index) => {
+                const project = projects.find(p => p.id === job.projectId);
+                // Preserve the existing active-step and reopened-stage selection rules.
+                const currentStep = job.status === 'Completed' ? job.steps[job.steps.length - 1] : (job.steps.find(s => s.status !== 'Completed') || job.steps[job.steps.length - 1]);
+                const activeAssignee = currentStep ? users.find(u => u.id === currentStep.assigneeId) : null;
+                const returned = job.steps.some(s => s.isReturned);
+                return (
+                  <tr key={job.id} className={styles.jobRow} onClick={() => onViewJob(job)}>
+                    <td className={styles.serial}>{index + 1}</td>
+                    <td><button type="button" className={styles.jobButton} onClick={e => { e.stopPropagation(); onViewJob(job); }} aria-label={`View JMS: ${job.title}`}>{job.title}</button><span className={styles.secondary}>WO / ARC: {job.workOrderNo || 'N/A'}</span></td>
+                    <td>{project?.name || 'N/A'}{job.plantUnit && <span className={styles.secondary}>{job.plantUnit}</span>}</td>
+                    <td><span className={styles.jmsNumber}>{job.jmsNo || '—'}</span></td>
+                    <td className={styles.amount}>{job.amount != null ? new Intl.NumberFormat('en-IN').format(job.amount) : '—'}</td>
+                    <td>
+                      <div className={styles.person}>
+                        {activeAssignee && <Avatar className="h-7 w-7 shrink-0"><AvatarImage src={activeAssignee.avatar} alt="" /><AvatarFallback className="bg-blue-100 text-blue-700 text-[10px]">{activeAssignee.name.split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('')}</AvatarFallback></Avatar>}
+                        <div className={styles.personText}><strong>{activeAssignee?.name || 'Unassigned'}</strong><span className={styles.secondary}>{currentStep?.name || 'N/A'}</span></div>
+                      </div>
+                      {returned ? <span className={styles.returned}><Undo2 size={12} /> Returned</span> : job.status === 'Completed' ? <span className={styles.completedLabel}>Completed</span> : null}
+                    </td>
+                    <td className={styles.dates}><span>{formatDate(job.dateFrom) || '—'}</span><span className={styles.secondary}>{formatDate(job.dateTo) || '—'}</span></td>
+                    {JOB_PROGRESS_STEPS.map((name, stageIndex) => {
+                      const matching = job.steps.filter(s => s.name === name);
+                      const step = matching.find(s => s.status !== 'Completed') || [...matching].reverse()[0];
+                      const completed = step?.status === 'Completed';
+                      const unacknowledged = !completed && (step?.status === 'Pending' || step?.isReturned);
+                      const pending = !completed && !unacknowledged && step?.status === 'Acknowledged';
+                      const skipped = step?.status === 'Skipped';
+                      const assignee = step ? users.find(u => u.id === step.assigneeId) : null;
+                      const updated = parseISO(job.lastUpdated);
+                      const daysElapsed = isValid(updated) ? differenceInDays(new Date(), updated) : null;
+                      const overdue = daysElapsed !== null && daysElapsed > 2 && (unacknowledged || pending);
+                      const state = completed ? 'complete' : unacknowledged ? 'unacknowledged' : pending ? 'pending' : 'idle';
+                      const label = completed ? 'Completed' : step?.isReturned ? 'Returned — awaiting acknowledgment' : unacknowledged ? 'Awaiting acknowledgment' : pending ? 'In progress' : skipped ? 'Skipped' : 'Not started';
+                      // Active stages have no assigned-at field; keep lastUpdated explicitly labelled.
+                      const recordedDate = completed ? step?.completedAt : (unacknowledged || pending) ? job.lastUpdated : null;
+                      return (
+                        <td key={name} className={styles.stageCell} data-state={state}>
+                          <div className={styles.stageTrack} data-first={stageIndex === 0} data-last={stageIndex === JOB_PROGRESS_STEPS.length - 1}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button type="button" className={styles.stageButton} onClick={e => { e.stopPropagation(); onViewJob(job); }} aria-label={`${name}: ${label}${recordedDate ? `, ${completed ? 'completed' : 'last updated'} ${formatDate(recordedDate)}` : ''}`}>
+                                  <span className={styles.node} data-overdue={!!overdue}>{completed ? <Check size={13} /> : unacknowledged ? <AlertCircle size={18} /> : pending ? <Clock size={18} /> : skipped ? <Minus size={12} /> : null}</span>
+                                  <span className={styles.stageDate}>{formatDate(recordedDate) || '\u00a0'}</span>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <div className="text-xs space-y-1">
+                                  <p className="font-semibold">{name} · {label}</p>
+                                  {overdue && <p className="font-semibold">ACTION OVERDUE</p>}
+                                  {completed && step?.completedAt && <p>Completed: {formatDate(step.completedAt, 'dd MMM yyyy, hh:mm a')}</p>}
+                                  {(unacknowledged || pending) && <><p>Last updated: {formatDate(job.lastUpdated, 'dd MMM yyyy, hh:mm a') || 'Unknown'}</p>{daysElapsed !== null && <p>{daysElapsed} days since last update</p>}</>}
+                                  {assignee && <p>Current: {assignee.name}</p>}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </TooltipProvider>
-      
-      <div className="shrink-0 border-t bg-[#f3f4f6] p-1 px-4 flex justify-between items-center text-[10px] font-medium text-slate-500 italic">
-        <div className="flex gap-4">
-          <span>TOTAL JOBS: {jobs.length}</span>
-          <span>COMPLETED: {jobs.filter(j => j.status === 'Completed').length}</span>
-        </div>
-        <div className="flex gap-2 items-center">
-            <div className="flex items-center gap-1"><div className="w-2 h-2 bg-green-100 border border-green-400"></div> Step Done</div>
-            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-yellow-100 border border-yellow-500"></div> In Progress (PENDING)</div>
-            <div className="flex items-center gap-1 ml-2"><div className="w-2 h-2 bg-orange-100 border border-orange-300"></div> Not Acknowledged (NOT ACK)</div>
-            <div className="flex items-center gap-1 ml-2">
-              <div className="w-1 h-3 bg-red-600"></div> 
-              Action Overdue (&gt;2 Days)
-            </div>
+      <div className={styles.footer}>
+        <div className={styles.counts}><span>Total jobs: {jobs.length}</span><span>Completed: {jobs.filter(j => j.status === 'Completed').length}</span></div>
+        <div className={styles.legend}>
+          <span><Check size={14} className={styles.green} /> Completed</span><span><Clock size={14} className={styles.amber} /> In progress</span>
+          <span><AlertCircle size={14} className={styles.red} /> Awaiting acknowledgment</span><span><i className={styles.idleDot} /> Not started</span><span><i className={styles.overdueDot} /> Overdue (&gt;2 days)</span>
         </div>
       </div>
     </div>

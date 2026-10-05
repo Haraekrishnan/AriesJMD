@@ -1,6 +1,7 @@
 
 'use client';
 
+import styles from '@/components/tp-certification/tp-mobile.module.css';
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useInventory } from '@/contexts/inventory-provider';
@@ -187,7 +188,7 @@ export default function TpCertificationPage() {
 
     return (
         <>
-        <div className="space-y-8">
+        <div className={styles.page}>
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">TP Certification Lists</h1>
@@ -195,11 +196,11 @@ export default function TpCertificationPage() {
                 </div>
             </div>
 
-            <Card>
+            <Card className={styles.savedCard}>
                 <CardHeader>
                     <CardTitle>View Saved Lists</CardTitle>
-                    <div className="flex flex-wrap items-center gap-4 pt-2">
-                         <div className="relative flex-1">
+                    <div className={styles.toolbar}>
+                         <div className={styles.search}>
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input 
                                 placeholder="Search by Serial No or Chest Croll No..."
@@ -233,9 +234,9 @@ export default function TpCertificationPage() {
                                 
                                 return (
                                     <AccordionItem key={list.id} value={list.id} className="border rounded-lg">
-                                        <div className="flex justify-between items-center p-4">
-                                            <AccordionTrigger className="p-0 hover:no-underline flex-1">
-                                                <div className="flex items-center gap-3">
+                                        <div className={styles.listHeader}>
+                                            <AccordionTrigger className={styles.listTrigger}>
+                                                <div className={styles.listIdentity}>
                                                     {isLockedForEdit && <Lock className="h-4 w-4 text-muted-foreground"/>}
                                                     <div>
                                                         <p className="font-semibold text-lg">{list.name}</p>
@@ -246,9 +247,9 @@ export default function TpCertificationPage() {
                                                 </div>
                                             </AccordionTrigger>
 
-                                            <Badge variant="secondary" className="mx-4">Total Qty: {totalQuantity}</Badge>
+                                            <Badge variant="secondary" className={styles.quantity}>Total Qty: {totalQuantity}</Badge>
 
-                                            <div className="flex items-center gap-2">
+                                            <div className={styles.actions}>
                                                 <Button size="sm" variant="outline" onClick={() => setUpdatingValidityList(list)}><BookOpen className="mr-2 h-4 w-4"/> Update Validity</Button>
                                                 {!isLockedForEdit && (
                                                     <Button size="sm" variant="secondary" onClick={() => setEditingList(list)}><Edit className="mr-2 h-4 w-4"/> Edit List</Button>
@@ -270,7 +271,7 @@ export default function TpCertificationPage() {
                                                 {user?.role === 'Admin' && (
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
-                                                            <Button size="icon" variant="destructive" onClick={e => e.stopPropagation()}><Trash2 className="h-4 w-4"/></Button>
+                                                            <Button size="icon" variant="destructive" aria-label={`Delete ${list.name}`} onClick={e => e.stopPropagation()}><Trash2 className="h-4 w-4"/></Button>
                                                         </AlertDialogTrigger>
                                                         <AlertDialogContent>
                                                             <AlertDialogHeader>
@@ -286,7 +287,7 @@ export default function TpCertificationPage() {
                                                 )}
                                             </div>
                                         </div>
-                                         <div className="p-4 pt-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 border-t">
+                                         <div className={styles.checklist}>
                                             {checklistItems.map(({ key, label, permissions }, index) => {
                                                 const checkData = checklist[key];
                                                 const isChecked = !!checkData;

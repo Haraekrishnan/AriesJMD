@@ -1,4 +1,5 @@
 'use client';
+import styles from './account.module.css';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -105,13 +106,13 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[425px]" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className={styles.dialog} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit User</DialogTitle>
           <DialogDescription>Update the details for {userToEdit.name}.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <ScrollArea className="max-h-[70vh] p-1">
+          <div className={styles.formFields}>
             <div className="space-y-4 p-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
@@ -238,7 +239,7 @@ export default function EditEmployeeDialog({ isOpen, setIsOpen, user: userToEdit
                   />
               </div>
             </div>
-          </ScrollArea>
+          </div>
           <DialogFooter className="mt-4">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Save Changes</Button>

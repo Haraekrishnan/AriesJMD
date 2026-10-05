@@ -164,7 +164,7 @@ const plannerNotificationCount =
       { href: '/my-requests', icon: Send, label: 'My Requests', notificationCount: notificationCounts.myRequests || 0, show: true },
       { href: '/management-requests', icon: MessageSquare, label: 'Management Requests', notificationCount: notificationCounts.managementRequests || 0, show: can.manage_directives },
       { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: notificationCounts.manageTasks || 0, show: true },
-      { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule },
+      { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule || can.view_job_schedule || can.view_all },
       { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
       { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: notificationCounts.jmsTracker || 0, show: can.view_job_progress },
       { href: '/project-management', icon: Briefcase, label: 'Project Management', notificationCount: 0, show: can.manage_projects },
@@ -194,10 +194,10 @@ const plannerNotificationCount =
                   <Button
                     asChild
                     variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
-                    className="w-full justify-start"
+                    className="portal-nav-link w-full justify-start"
                     onClick={onLinkClick}
                   >
-                    <Link href={item.href} className="flex items-center justify-between w-full">
+                    <Link aria-current={pathname.startsWith(item.href) ? 'page' : undefined} href={item.href} className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-3">
                         <item.icon className="h-5 w-5" />
                         <span>{item.label}</span>
@@ -279,7 +279,7 @@ export default function Header() {
               <span className="sr-only">Toggle Menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="flex flex-col p-0 bg-card text-card-foreground w-64 border-r">
+          <SheetContent side="left" className="portal-navigation flex flex-col p-0 w-64 border-r">
              <SheetHeader className="p-4 border-b">
                 <SheetTitle>
                     <Link href="/dashboard" className="flex items-center gap-3" onClick={() => setIsMobileMenuOpen(false)}>

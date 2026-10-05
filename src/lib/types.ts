@@ -150,6 +150,8 @@ export const ALL_PERMISSIONS = [
   'view_activity_logs',
   'manage_accommodation',
   'log_manpower',
+  'manage_feedback',
+  'view_job_schedule',
   'manage_job_schedule',
   'prepare_master_schedule',
   'manage_vendors',

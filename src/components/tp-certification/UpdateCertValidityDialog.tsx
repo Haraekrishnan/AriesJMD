@@ -1,5 +1,6 @@
 
 'use client';
+import styles from '@/components/tp-certification/tp-mobile.module.css';
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -198,7 +199,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className={styles.dialog + " max-w-4xl h-[90vh] flex flex-col"} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Update TP Validity &amp; Certificate</DialogTitle>
           <DialogDescription>Update details for items in list: {certList.name}</DialogDescription>
@@ -218,7 +219,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
             </div>
         </div>
 
-        <ScrollArea className="flex-1 mt-4 border rounded-lg">
+        <div className={styles.dialogList}>
           <Accordion type="multiple" className="w-full">
             {Object.entries(groupedItems).map(([materialName, groupItems]) => {
               const allInGroupSelected = groupItems.every(item => selectedIndices.has(item.originalIndex));
@@ -280,8 +281,8 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
               );
             })}
           </Accordion>
-        </ScrollArea>
-        <DialogFooter className="pt-4 mt-auto border-t">
+        </div>
+        <DialogFooter className={styles.dialogFooter}>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button onClick={handleSave}>Save Changes to Selected ({selectedIndices.size})</Button>
         </DialogFooter>

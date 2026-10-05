@@ -11,8 +11,9 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { ALL_PERMISSIONS, type Permission, type Role } from '@/lib/types';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ALL_PERMISSIONS, type Permission, type RoleDefinition } from '@/lib/types';
+import PermissionPicker from './permission-picker';
+import styles from './account.module.css';
 
 const roleSchema = z.object({
   name: z.string().min(1, 'Role name is required'),
@@ -24,7 +25,7 @@ type RoleFormValues = z.infer<typeof roleSchema>;
 interface EditRoleDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  role: Role;
+  role: RoleDefinition;
 }
 
 const formatPermissionName = (permission: string) => {
@@ -43,7 +44,7 @@ export default function EditRoleDialog({ isOpen, setIsOpen, role }: EditRoleDial
     if (role && isOpen) {
       form.reset({
         name: role.name,
-        permissions: role.permissions,
+        permissions: [...(role.permissions || [])],
       });
     }
   }, [role, isOpen, form]);
@@ -51,7 +52,7 @@ export default function EditRoleDialog({ isOpen, setIsOpen, role }: EditRoleDial
   const onSubmit = (data: RoleFormValues) => {
     updateRole({
         ...role,
-        name: data.name,
+        name: data.name as RoleDefinition['name'],
         permissions: (data.permissions as Permission[]) || [],
     });
     toast({
@@ -63,7 +64,7 @@ export default function EditRoleDialog({ isOpen, setIsOpen, role }: EditRoleDial
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className={styles.dialog} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Role: {role.name}</DialogTitle>
           <DialogDescription>Modify the role's name and permissions.</DialogDescription>
@@ -77,32 +78,9 @@ export default function EditRoleDialog({ isOpen, setIsOpen, role }: EditRoleDial
 
           <div className="space-y-2">
             <Label>Permissions</Label>
-            <ScrollArea className="h-64 rounded-md border p-4">
-                <div className="space-y-2">
-                {ALL_PERMISSIONS.map(permission => (
-                    <Controller
-                        key={permission}
-                        name="permissions"
-                        control={form.control}
-                        render={({ field }) => (
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={`edit-${permission}`}
-                                    checked={field.value?.includes(permission)}
-                                    onCheckedChange={checked => {
-                                        const value = field.value || [];
-                                        return checked
-                                        ? field.onChange([...value, permission])
-                                        : field.onChange(value.filter(v => v !== permission));
-                                    }}
-                                />
-                                <Label htmlFor={`edit-${permission}`} className="font-normal">{formatPermissionName(permission)}</Label>
-                            </div>
-                        )}
-                    />
-                ))}
-                </div>
-            </ScrollArea>
+            <Controller name="permissions" control={form.control} render={({ field }) => (
+              <PermissionPicker value={field.value || []} onChange={field.onChange} />
+            )} />
           </div>
           
           <DialogFooter>
