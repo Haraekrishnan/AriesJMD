@@ -1,88 +1,35 @@
 'use client';
-
-import React from 'react';
+import { useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { JobSchedule, JobScheduleItem } from '@/lib/types';
-import { Badge } from '../ui/badge';
-import { Users } from 'lucide-react';
+import type { JobSchedule } from '@/lib/types';
+import { Input } from '@/components/ui/input';
+import { CheckCircle2 } from 'lucide-react';
+import { scheduleColumns } from './schedule-worksheet';
+import styles from './schedule-worksheet.module.css';
 
-interface ReadOnlyJobScheduleProps {
-  schedule?: JobSchedule;
-}
-
-export default function ReadOnlyJobSchedule({ schedule }: ReadOnlyJobScheduleProps) {
+export default function ReadOnlyJobSchedule({ schedule }: { schedule?: JobSchedule }) {
   const { manpowerProfiles, vehicles, projects, users } = useAppContext();
-
-  const getManpowerNames = (ids: string[]) => {
-    return ids.map(id => {
-        const mp = manpowerProfiles.find(p => p.id === id);
-        if (mp) return mp.name;
-        const u = users.find(u => u.id === id);
-        return u ? u.name : id;
-    }).join(', ');
-  };
-
-  const getVehicleNumber = (id?: string) => {
-    if (!id || id === 'none') return 'N/A';
-    return vehicles.find(v => v.id === id)?.vehicleNumber || 'N/A';
-  };
-
-  const getLocationText = (item: JobScheduleItem) => {
-    const project = projects.find(p => p.id === item.projectId);
-    return [project?.name, item.location].filter(Boolean).join(' - ');
-  }
-
-  if (!schedule || !schedule.items || schedule.items.length === 0) {
-    return (
-      <div className="text-center p-20 text-muted-foreground bg-muted/5 rounded-md">
-        No schedule items defined for this instance.
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <Table className="text-[11px] min-w-[1000px]">
-        <TableHeader>
-          <TableRow className="bg-muted/30">
-              <TableHead className="w-[50px] text-center">Sr.</TableHead>
-              <TableHead>Personnel</TableHead>
-              <TableHead>Job Type</TableHead>
-              <TableHead>Job No.</TableHead>
-              <TableHead>Project/Vessel's Name</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Reporting Time</TableHead>
-              <TableHead>Client/Contact</TableHead>
-              <TableHead>Vehicle</TableHead>
-              <TableHead>Remarks</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {schedule.items.map((item, index) => (
-            <TableRow key={item.id} className="hover:bg-muted/10">
-              <TableCell className="font-bold text-center">{index + 1}</TableCell>
-              <TableCell className="max-w-[300px]">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="shrink-0 font-bold px-1.5 py-0 text-[10px] h-5">
-                    <Users className="mr-1 h-3 w-3" />
-                    {item.manpowerIds?.length || 0}
-                  </Badge>
-                  <span className="font-medium">{getManpowerNames(item.manpowerIds)}</span>
-                </div>
-              </TableCell>
-              <TableCell className="uppercase">{item.jobType}</TableCell>
-              <TableCell className="font-mono">{item.jobNo}</TableCell>
-              <TableCell className="uppercase">{item.projectVesselName}</TableCell>
-              <TableCell className="uppercase">{getLocationText(item)}</TableCell>
-              <TableCell>{item.reportingTime}</TableCell>
-              <TableCell>{item.clientContact}</TableCell>
-              <TableCell>{getVehicleNumber(item.vehicleId)}</TableCell>
-              <TableCell className="italic text-muted-foreground whitespace-pre-wrap max-w-[200px]">{item.remarks}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+  const [search, setSearch] = useState('');
+  const personName = (id: string) => manpowerProfiles.find(p => p.id === id)?.name || users.find(u => u.id === id)?.name || id;
+  const items = schedule?.items || [];
+  const visible = items.map((item, index) => ({ item, index })).filter(({ item }) => (item.manpowerIds || []).some(id => personName(id).toLowerCase().includes(search.trim().toLowerCase())) || !search.trim());
+  const count = new Set(items.flatMap(item => item.manpowerIds || [])).size;
+  return <>
+    <div className={styles.searchBar}><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Find assigned person..." aria-label="Find assigned person" /></div>
+    <div className={styles.gridScroll} role="region" aria-label="Saved job schedule" tabIndex={0}>
+      <table className={styles.sheet}>
+        <colgroup><col className={styles.numberCol} /><col className={styles.personCol} />{scheduleColumns.slice(1).map(c => <col key={c} />)}</colgroup>
+        <thead><tr><th scope="col">#</th>{scheduleColumns.map(c => <th scope="col" key={c}>{c}</th>)}</tr></thead>
+        <tbody>{visible.map(({ item, index }) => <tr key={item.id}>
+          <td>{index + 1}</td>
+          <td><ol className={styles.names}>{(item.manpowerIds || []).map((id, n) => <li key={id}><span className={styles.personNumber}>{n + 1}</span><span>{personName(id)}</span></li>)}</ol></td>
+          <td>{item.jobType || '—'}</td><td>{item.jobNo || '—'}</td><td>{item.projectVesselName || '—'}</td>
+          <td>{projects.find(p => p.id === item.projectId)?.name || item.projectId || '—'}</td><td>{item.location || '—'}</td>
+          <td>{item.reportingTime || '—'}</td><td>{item.clientContact || '—'}</td>
+          <td>{vehicles.find(v => v.id === item.vehicleId)?.vehicleNumber || (item.vehicleId && item.vehicleId !== 'none' ? item.vehicleId : 'N/A')}</td><td className={styles.remarks}>{item.remarks || '—'}</td>
+        </tr>)}{!visible.length && <tr><td colSpan={11} className={styles.empty}>{items.length ? 'No assigned personnel match your search.' : 'No job entries in this schedule.'}</td></tr>}</tbody>
+      </table>
     </div>
-  );
+    <div className={styles.footer}><span>{items.length} job rows · {count} personnel assigned{search && ` · ${visible.length} matching rows`}</span><span className={styles.saved}><CheckCircle2 size={14} />All changes saved</span></div>
+  </>;
 }

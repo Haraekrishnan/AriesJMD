@@ -30,6 +30,9 @@ export default function JobSchedulePage() {
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [footerDate, setFooterDate] = useState<Date>(new Date());
     const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null);
+    const [scheduleBusy, setScheduleBusy] = useState(false);
+    const [scheduleDirty, setScheduleDirty] = useState(false);
+    const canLeaveDraft = () => !scheduleDirty || window.confirm("Discard unsaved schedule changes? The saved schedule will remain unchanged.");
     
     // Batch Export State
     const [isBatchExportOpen, setIsBatchExportOpen] = useState(false);
@@ -58,14 +61,17 @@ export default function JobSchedulePage() {
     const isLocked = activeSchedule?.isLocked || false;
 
     const changeDay = (amount: number) => {
+        if (!canLeaveDraft()) return;
         setSelectedDate(prev => addDays(prev, amount));
     };
 
-    const handleAddSchedule = () => {
-        if (!user || !can.manage_job_schedule) return;
+    const handleAddSchedule = async () => {
+        if (!user || !can.manage_job_schedule || scheduleBusy || !canLeaveDraft()) return;
+        setScheduleBusy(true);
+        try {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         const newId = `schedule_${dateStr}_${Date.now()}`;
-        saveJobSchedule({
+        await saveJobSchedule({
             id: newId,
             date: dateStr,
             projectId: 'all',
@@ -78,11 +84,14 @@ export default function JobSchedulePage() {
         });
         setActiveScheduleId(newId);
         toast({ title: 'New Schedule Added' });
+        } catch { toast({ variant: 'destructive', title: 'Could not create schedule. Please try again.' }); } finally { setScheduleBusy(false); }
     };
 
-    const handleToggleLock = () => {
-        if (!activeSchedule || !user || !can.manage_job_schedule) return;
-        saveJobSchedule({
+    const handleToggleLock = async () => {
+        if (!activeSchedule || !user || !can.manage_job_schedule || scheduleBusy || !canLeaveDraft()) return;
+        setScheduleBusy(true);
+        try {
+        await saveJobSchedule({
             ...activeSchedule,
             isLocked: !isLocked,
         });
@@ -90,6 +99,7 @@ export default function JobSchedulePage() {
             title: isLocked ? 'Schedule Unlocked' : 'Schedule Locked',
             description: isLocked ? 'You can now make changes.' : 'Schedule finalized and locked for editing.',
         });
+        } catch { toast({ variant: 'destructive', title: 'Could not change schedule lock. Please try again.' }); } finally { setScheduleBusy(false); }
     };
 
     const handleDeleteSchedule = (id: string) => {
@@ -266,7 +276,7 @@ export default function JobSchedulePage() {
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={selectedDate} onSelect={(day) => day && setSelectedDate(day)} initialFocus />
+                              <Calendar mode="single" selected={selectedDate} onSelect={(day) => { if (day && canLeaveDraft()) setSelectedDate(day); }} initialFocus />
                             </PopoverContent>
                         </Popover>
                         <Button variant="outline" size="icon" onClick={() => changeDay(1)}>
@@ -274,13 +284,13 @@ export default function JobSchedulePage() {
                         </Button>
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 w-full sm:w-auto">
-                        <div className="hidden sm:block space-y-1.5">
+                        <div className="space-y-1.5">
                             <Label htmlFor="footer-date" className="text-xs">Report Date</Label>
                             <DatePickerInput value={footerDate} onChange={(d) => d && setFooterDate(d)} />
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                             {can.manage_job_schedule && activeSchedule && (
-                                <Button variant={isLocked ? "secondary" : "destructive"} onClick={handleToggleLock} size="sm">
+                                <Button variant={isLocked ? "secondary" : "destructive"} onClick={handleToggleLock} disabled={scheduleBusy} size="sm">
                                     {isLocked ? <Unlock className="mr-2 h-4 w-4"/> : <Lock className="mr-2 h-4 w-4"/>}
                                     {isLocked ? 'Unlock' : 'Lock'}
                                 </Button>
@@ -288,14 +298,14 @@ export default function JobSchedulePage() {
                             <Button onClick={() => handleExport('excel')} variant="outline" size="sm" disabled={!activeSchedule}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
                             <Button onClick={() => handleExport('pdf')} variant="outline" size="sm" disabled={!activeSchedule}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
                             {can.manage_job_schedule && (
-                                <Button onClick={handleAddSchedule} size="sm"><PlusCircle className="mr-2 h-4 w-4"/> Add Schedule</Button>
+                                <Button onClick={handleAddSchedule} disabled={scheduleBusy} size="sm"><PlusCircle className="mr-2 h-4 w-4"/> Add Schedule</Button>
                             )}
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0 sm:p-4">
                     {schedulesForDate.length > 0 ? (
-                        <Tabs value={activeScheduleId || ''} onValueChange={setActiveScheduleId} className="w-full">
+                        <Tabs value={activeScheduleId || ''} onValueChange={id => { if (id !== activeScheduleId && canLeaveDraft()) setActiveScheduleId(id); }} className="w-full">
                             <TabsList className="px-4 bg-muted/20 h-auto flex-wrap justify-start border-b rounded-none mb-4 gap-2 py-2">
                                 {schedulesForDate.map((s, i) => (
                                     <div key={s.id} className="relative group">
@@ -329,6 +339,7 @@ export default function JobSchedulePage() {
                                     <JobScheduleTable 
                                         selectedDate={format(selectedDate, 'yyyy-MM-dd')} 
                                         schedule={s}
+                                        onDirtyChange={setScheduleDirty}
                                     />
                                 </TabsContent>
                             ))}

@@ -1,4 +1,6 @@
 'use client';
+import styles from './schedule-worksheet.module.css';
+import { scheduleColumns, scheduleAssignmentConflict, copyScheduleJobDetails } from './schedule-worksheet';
 import { useFieldArray, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,7 +17,7 @@ import { Check, PlusCircle, Save, Trash2, Copy, Users, ChevronsUpDown, ArrowUp, 
 import { cn } from '@/lib/utils';
 import type { JobSchedule, JobScheduleItem } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays, parseISO } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -38,7 +40,7 @@ const scheduleItemSchema = z.object({
 
 const scheduleSchema = z.object({
   name: z.string().optional(),
-  items: z.array(scheduleItemSchema),
+  items: z.array(scheduleItemSchema).min(1, "Add at least one job row"),
 });
 
 type ScheduleFormValues = z.infer<typeof scheduleSchema>;
@@ -47,12 +49,19 @@ interface EditableJobScheduleProps {
   schedule?: JobSchedule;
   selectedDate: string;
   globallyAssignedIds: Set<string>;
+  onSaved: (schedule: JobSchedule) => void;
+  onCancel: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export default function EditableJobSchedule({ schedule, selectedDate, globallyAssignedIds }: EditableJobScheduleProps) {
-  const { user, users, manpowerProfiles, vehicles, jobSchedules, saveJobSchedule, projects } = useAppContext();
+export default function EditableJobSchedule({ schedule, selectedDate, globallyAssignedIds, onSaved, onCancel, onDirtyChange }: EditableJobScheduleProps) {
+  const { user, users, manpowerProfiles, vehicles, jobSchedules, saveJobSchedule, projects, can } = useAppContext();
   const { toast } = useToast();
   
+  const [selectedRow, setSelectedRow] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const saveLock = useRef(false);
+  const [confirmAction, setConfirmAction] = useState<'delete' | 'cancel' | null>(null);
   const [searchPersonId, setSearchPersonId] = useState<string | null>(null);
   const [searchPopoverOpen, setSearchPersonPopoverOpen] = useState(false);
 
@@ -65,10 +74,15 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
   });
 
   useEffect(() => {
-    form.reset({ name: schedule?.name ?? '', items: schedule?.items ?? [] });
-  }, [schedule, form]);
+    const warn = (event: BeforeUnloadEvent) => { if (form.formState.isDirty) { event.preventDefault(); event.returnValue = ''; } };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [form.formState.isDirty]);
 
-  const { fields, append, remove, replace, insert } = useFieldArray({
+  useEffect(() => { onDirtyChange?.(form.formState.isDirty); }, [form.formState.isDirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+
+  const { fields, append, remove, replace, insert, move } = useFieldArray({
     control: form.control,
     name: 'items',
   });
@@ -86,7 +100,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
         .filter(u => (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Project Coordinator') && u.status === 'active')
         .map(u => {
             const projectName = u.projectIds && u.projectIds.length > 0
-                ? projects.find(p => p.id === u.projectIds[0])?.name
+                ? projects.find(p => p.id === u.projectIds?.[0])?.name
                 : '';
             return { value: u.id, label: `${u.name} (${u.role}${projectName ? `, ${projectName}`: ''})` };
         });
@@ -122,7 +136,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
 
   const handleQuickUnassign = (id: string, rowIndex: number) => {
       const currentIds = form.getValues(`items.${rowIndex}.manpowerIds`);
-      form.setValue(`items.${rowIndex}.manpowerIds`, currentIds.filter(val => val !== id));
+      form.setValue(`items.${rowIndex}.manpowerIds`, currentIds.filter(val => val !== id), { shouldDirty: true });
       setSearchPersonId(null);
       toast({ title: "Person Unassigned" });
   };
@@ -130,11 +144,11 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
   const handleQuickReassign = (id: string, fromRowIndex: number, toRowIndex: number) => {
       if (fromRowIndex === toRowIndex) return;
       const fromIds = form.getValues(`items.${fromRowIndex}.manpowerIds`);
-      form.setValue(`items.${fromRowIndex}.manpowerIds`, fromIds.filter(val => val !== id));
+      form.setValue(`items.${fromRowIndex}.manpowerIds`, fromIds.filter(val => val !== id), { shouldDirty: true });
       
       const toIds = form.getValues(`items.${toRowIndex}.manpowerIds`) || [];
       if (!toIds.includes(id)) {
-          form.setValue(`items.${toRowIndex}.manpowerIds`, [...toIds, id]);
+          form.setValue(`items.${toRowIndex}.manpowerIds`, [...toIds, id], { shouldDirty: true });
       }
       setSearchPersonId(null);
       toast({ title: "Person Reassigned" });
@@ -142,22 +156,25 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
   
   const vehicleOptions = useMemo(() => vehicles || [], [vehicles]);
 
-  const onSubmit = (data: ScheduleFormValues) => {
-    const scheduleId = schedule?.id || `schedule_${selectedDate}`;
-    saveJobSchedule({
-      id: scheduleId,
-      name: data.name,
-      date: selectedDate,
-      projectId: 'all', 
-      supervisorId: user!.id,
-      createdAt: schedule?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      items: data.items,
-      isLocked: schedule?.isLocked || false,
-    });
-    toast({ title: 'Schedule Saved' });
+  const displayName = (id: string) => manpowerProfiles.find(p => p.id === id)?.name || users.find(u => u.id === id)?.name || id;
+  const onSubmit = async (data: ScheduleFormValues) => {
+    if (!user || !can.manage_job_schedule || schedule?.isLocked || saveLock.current) return;
+    const conflict = scheduleAssignmentConflict(data.items, globallyAssignedIds);
+    if (conflict) { toast({ variant: 'destructive', title: 'Duplicate assignment', description: displayName(conflict) + ' is already assigned on this date. Please adjust the rows before saving.' }); return; }
+    const saved: JobSchedule = {
+      ...schedule,
+      id: schedule?.id || 'schedule_' + selectedDate,
+      name: data.name, date: selectedDate, projectId: schedule?.projectId || 'all',
+      supervisorId: schedule?.supervisorId || user.id,
+      createdAt: schedule?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(),
+      items: data.items, isLocked: schedule?.isLocked || false,
+    };
+    saveLock.current = true; setSaving(true);
+    try { await saveJobSchedule(saved); form.reset(data); toast({ title: 'Schedule Saved' }); onSaved(saved); }
+    catch { toast({ variant: 'destructive', title: 'Schedule could not be saved', description: 'Your changes are still here. Please try again.' }); }
+    finally { saveLock.current = false; setSaving(false); }
   };
-  
+
   const handleCopyYesterday = () => {
     if (!selectedDate) return;
     
@@ -242,144 +259,38 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
     remarks: '',
   });
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Quick Personnel Finder & Reassignment */}
-      <div className="p-3 bg-muted/20 border-b flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-semibold">Find Assigned Person:</span>
-          </div>
-          <Popover open={searchPopoverOpen} onOpenChange={setSearchPersonPopoverOpen}>
-            <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="w-[250px] justify-between h-8 text-xs">
-                    {searchPersonId ? (assignedPersonnel.find(p => p.id === searchPersonId)?.name || "Select person...") : "Search assigned staff..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0" align="start">
-                <Command>
-                    <CommandInput placeholder="Type name..." />
-                    <CommandList>
-                        <CommandEmpty>No assigned person found.</CommandEmpty>
-                        <CommandGroup>
-                            {Array.from(new Set(assignedPersonnel.map(p => p.id))).map(id => {
-                                const p = assignedPersonnel.find(x => x.id === id);
-                                return (
-                                    <CommandItem key={id} value={p?.name} onSelect={() => {
-                                        setSearchPersonId(id);
-                                        setSearchPersonPopoverOpen(false);
-                                    }}>
-                                        <Check className={cn("mr-2 h-4 w-4", id === searchPersonId ? "opacity-100" : "opacity-0")} />
-                                        {p?.name}
-                                    </CommandItem>
-                                )
-                            })}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-          </Popover>
+  const selected = fields[selectedRow] ? selectedRow : Math.max(0, fields.length - 1);
+  const addRow = () => { append(generateNewItem()); setSelectedRow(fields.length); };
+  const choosePerson = (id: string) => { setSearchPersonId(id); setSearchPersonPopoverOpen(false); const found = assignedPersonnel.find(p => p.id === id); if (found) { setSelectedRow(found.rowIndex); document.getElementById('schedule-row-' + fields[found.rowIndex].id)?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } };
 
-          {searchPersonId && (() => {
-              const currentAssignment = assignedPersonnel.find(p => p.id === searchPersonId);
-              if (!currentAssignment) return null;
-              
-              return (
-                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
-                      <Badge variant="secondary" className="h-8 px-2 text-[10px]">Row {currentAssignment.rowIndex + 1}</Badge>
-                      <Select onValueChange={(val) => handleQuickReassign(searchPersonId, currentAssignment.rowIndex, parseInt(val))}>
-                          <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue placeholder="Move to Row..." /></SelectTrigger>
-                          <SelectContent>
-                              {fields.map((_, i) => (
-                                  <SelectItem key={i} value={i.toString()} disabled={i === currentAssignment.rowIndex}>Row {i + 1}</SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
-                      <Button variant="destructive" size="sm" className="h-8 text-xs px-2" onClick={() => handleQuickUnassign(searchPersonId, currentAssignment.rowIndex)}>
-                          <UserX className="mr-1.5 h-3.5 w-3.5" /> Unassign
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSearchPersonId(null)}><X className="h-4 w-4"/></Button>
-                  </div>
-              )
-          })()}
-
-          <div className="ml-auto flex items-center gap-2">
-              <Label className="text-xs font-bold whitespace-nowrap">Schedule Name:</Label>
-              <Input {...form.register('name')} placeholder="e.g. Mechanical Team" className="h-8 w-48 text-xs" />
-          </div>
+  return <form onSubmit={form.handleSubmit(onSubmit, () => toast({ variant: 'destructive', title: 'Check the highlighted rows', description: 'Each job needs at least one assigned person.' }))}>
+    <fieldset disabled={saving} className={styles.editorFieldset}>
+      <div className={styles.heading}>
+        <div><h2>Edit {schedule?.name || 'Schedule'}</h2><p>All assigned personnel are shown in each job row.</p></div>
+        <div className={styles.scheduleName}><Label htmlFor="worksheet-name">Schedule name</Label><Input id="worksheet-name" {...form.register('name')} /><span className={styles.draft}>{form.formState.isDirty ? 'Unsaved changes' : 'Editing'}</span></div>
       </div>
-
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <ScrollArea className="w-full">
-          <div className="min-w-[1400px]">
-            <Table>
-              <TableHeader>
-                  <TableRow className="bg-muted/30">
-                      <TableHead className="w-[50px] text-center">Sr.</TableHead>
-                      <TableHead className="min-w-[250px]">Personnel Assignments</TableHead>
-                      <TableHead>Job Type</TableHead>
-                      <TableHead>Job No.</TableHead>
-                      <TableHead>Project/Vessel's Name</TableHead>
-                      <TableHead className="min-w-[200px]">Project</TableHead>
-                      <TableHead>Location Details</TableHead>
-                      <TableHead>Reporting Time</TableHead>
-                      <TableHead>Client/Contact</TableHead>
-                      <TableHead>Vehicle</TableHead>
-                      <TableHead>Remarks</TableHead>
-                      <TableHead className="w-[80px] text-right">Actions</TableHead>
-                  </TableRow>
-              </TableHeader>
-              <TableBody>
-                {fields.map((field, index) => (
-                  <TableRow key={field.id} className="hover:bg-muted/20">
-                    <TableCell className="font-bold text-center text-xs">{index + 1}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1.5 min-w-[200px]">
-                        <div className="px-1">
-                          <Badge variant="secondary" className="font-bold text-[10px] h-5">
-                            <Users className="mr-1 h-3 w-3" />
-                            {watchedItems[index]?.manpowerIds?.length || 0} Members
-                          </Badge>
-                        </div>
-                        <Controller
-                          name={`items.${index}.manpowerIds`}
-                          control={form.control}
-                          render={({ field: controllerField }) => (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="outline" className="w-full justify-start h-auto min-h-[40px] text-left p-1 text-[11px]">
-                                  <div className="flex flex-wrap gap-1">
-                                    {(controllerField.value || []).length > 0
-                                      ? controllerField.value.map(id => {
-                                          const option = manpowerOptions.find(p => p.value === id);
-                                          return (
-                                            <Badge 
-                                              key={id} 
-                                              variant="secondary"
-                                              className="flex items-center gap-1 py-0 px-1.5 text-[10px] h-5"
-                                            >
-                                              <span className="max-w-[120px] truncate">{option?.label.split(' (')[0] || id}</span>
-                                              <span
-                                                role="button"
-                                                onClick={(e) => {
-                                                  e.preventDefault();
-                                                  e.stopPropagation();
-                                                  const currentIds = form.getValues(`items.${index}.manpowerIds`);
-                                                  form.setValue(`items.${index}.manpowerIds`, currentIds.filter(val => val !== id));
-                                                }}
-                                                className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5 cursor-pointer flex items-center justify-center"
-                                              >
-                                                <X className="h-2.5 w-2.5" />
-                                              </span>
-                                            </Badge>
-                                          );
-                                        })
-                                      : <span className="text-muted-foreground italic px-2">Select staff...</span>}
-                                  </div>
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-[300px] p-0" align="start">
+      <div className={styles.toolbar}>
+        <Button type="button" size="sm" onClick={addRow}><PlusCircle className="mr-2 h-4 w-4" />Add job row</Button>
+        <Button type="button" size="sm" variant="outline" disabled={!fields.length} title="Copies the job details with no personnel assigned" onClick={() => { insert(selected + 1, copyScheduleJobDetails(form.getValues('items.' + selected as `items.${number}`), generateNewItem().id)); setSelectedRow(selected + 1); }}><Copy className="mr-2 h-4 w-4" />Copy job details</Button>
+        <Button type="button" size="sm" variant="outline" disabled={!fields.length || selected === 0} onClick={() => { move(selected, selected - 1); setSelectedRow(selected - 1); }}><ArrowUp className="mr-1 h-4 w-4" />Move up</Button>
+        <Button type="button" size="sm" variant="outline" disabled={!fields.length || selected >= fields.length - 1} onClick={() => { move(selected, selected + 1); setSelectedRow(selected + 1); }}><ArrowDown className="mr-1 h-4 w-4" />Move down</Button>
+        <Button type="button" size="sm" variant="outline" className="text-destructive" disabled={!fields.length} onClick={() => setConfirmAction('delete')}><Trash2 className="mr-1 h-4 w-4" />Delete row</Button>
+        <Popover open={searchPopoverOpen} onOpenChange={setSearchPersonPopoverOpen}>
+          <PopoverTrigger asChild><Button type="button" variant="outline" size="sm" className={styles.findPerson}><Search className="mr-2 h-4 w-4" />Find assigned person...</Button></PopoverTrigger>
+          <PopoverContent className="w-[min(360px,calc(100vw-24px))] p-0"><Command><CommandInput placeholder="Search assigned names..." /><CommandList><CommandEmpty>No assigned person found.</CommandEmpty><CommandGroup>{assignedPersonnel.map(p => <CommandItem key={p.id + ':' + p.rowIndex} value={p.name} onSelect={() => choosePerson(p.id)}>{displayName(p.id)} · Row {p.rowIndex + 1}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent>
+        </Popover>
+      </div>
+      {searchPersonId && (() => { const found = assignedPersonnel.find(p => p.id === searchPersonId); return found ? <div className={styles.toolbar}><span>{displayName(searchPersonId)} · Row {found.rowIndex + 1}</span><Select onValueChange={v => handleQuickReassign(searchPersonId, found.rowIndex, Number(v))}><SelectTrigger className="w-40"><SelectValue placeholder="Move person to row" /></SelectTrigger><SelectContent>{fields.map((f, i) => <SelectItem key={f.id} value={String(i)} disabled={i === found.rowIndex}>Row {i + 1}</SelectItem>)}</SelectContent></Select><Button type="button" variant="outline" onClick={() => handleQuickUnassign(searchPersonId, found.rowIndex)}>Unassign</Button><Button type="button" variant="ghost" aria-label="Clear person search" onClick={() => setSearchPersonId(null)}><X size={16} /></Button></div> : null; })()}
+      <div className={styles.gridScroll} role="region" aria-label="Edit job schedule worksheet" tabIndex={0}>
+        <table className={styles.sheet}>
+          <colgroup><col className={styles.numberCol} /><col className={styles.personCol} />{scheduleColumns.slice(1).map(c => <col key={c} />)}</colgroup>
+          <thead><tr><th scope="col">#</th>{scheduleColumns.map(c => <th key={c} scope="col">{c}</th>)}</tr></thead>
+          <tbody>{fields.map((field, index) => <tr key={field.id} id={'schedule-row-' + field.id} data-selected={index === selected} onFocusCapture={() => setSelectedRow(index)}>
+            <td><button type="button" className={styles.rowSelect} aria-label={'Select row ' + (index + 1)} aria-pressed={index === selected} onClick={() => setSelectedRow(index)}>{index + 1}</button></td>
+            <td>
+              <ol className={styles.names}>{(watchedItems[index]?.manpowerIds || []).map((id, n) => <li key={id}><span className={styles.personNumber}>{n + 1}</span><span>{displayName(id)}</span><button type="button" className={styles.removeName} aria-label={'Remove ' + displayName(id) + ' from row ' + (index + 1)} onClick={() => handleQuickUnassign(id, index)}><X size={12} /></button></li>)}</ol>
+              <Controller name={`items.${index}.manpowerIds`} control={form.control} render={({ field: controllerField }) => <Popover><PopoverTrigger asChild><Button type="button" variant="link" className={styles.addPersonnel}>+ Add / change personnel</Button></PopoverTrigger>
+                              <PopoverContent className="w-[min(360px,calc(100vw-24px))] p-0" align="start">
                                 <Command>
                                   <CommandInput placeholder="Search manpower..." />
                                   <CommandList>
@@ -428,123 +339,26 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                                   </CommandList>
                                 </Command>
                               </PopoverContent>
-                            </Popover>
-                          )}
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell><Input {...form.register(`items.${index}.jobType`)} className="h-8 text-xs" /></TableCell>
-                    <TableCell><Input {...form.register(`items.${index}.jobNo`)} className="h-8 text-xs" /></TableCell>
-                    <TableCell><Input {...form.register(`items.${index}.projectVesselName`)} className="h-8 text-xs" /></TableCell>
-                    <TableCell>
-                      <Controller
-                          name={`items.${index}.projectId`}
-                          control={form.control}
-                          render={({ field: controllerField }) => (
-                              <Select onValueChange={controllerField.onChange} value={controllerField.value}>
-                                  <SelectTrigger className="h-8 text-xs">
-                                      <SelectValue placeholder="Project" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                      {projects.map(p => (
-                                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                                      ))}
-                                  </SelectContent>
-                              </Select>
-                          )}
-                      />
-                    </TableCell>
-                    <TableCell><Input {...form.register(`items.${index}.location`)} placeholder="Tank/Area" className="h-8 text-xs" /></TableCell>
-                    <TableCell><Input type="time" {...form.register(`items.${index}.reportingTime`)} className="h-8 text-xs" /></TableCell>
-                    <TableCell><Input {...form.register(`items.${index}.clientContact`)} className="h-8 text-xs" /></TableCell>
-                    <TableCell>
-                      <Controller name={`items.${index}.vehicleId`} control={form.control} render={({ field: controllerField }) => (
-                          <Select onValueChange={controllerField.onChange} value={controllerField.value}>
-                              <SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="N/A" /></SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="none">N/A</SelectItem>
-                                  {vehicleOptions?.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicleNumber}</SelectItem>)}
-                              </SelectContent>
-                          </Select>
-                      )} />
-                    </TableCell>
-                    <TableCell><Textarea {...form.register(`items.${index}.remarks`)} className="min-h-[40px] w-[200px] text-xs"/></TableCell>
-                    <TableCell>
-                      <div className="flex flex-col items-center justify-center gap-1">
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-blue-600"
-                            onClick={() => insert(index, generateNewItem())}
-                          >
-                            <ArrowUp className="h-3 w-3" />
-                          </Button>
-                          
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 text-blue-600"
-                            onClick={() => insert(index + 1, generateNewItem())}
-                          >
-                            <ArrowDown className="h-3 w-3" />
-                          </Button>
-
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Row?</AlertDialogTitle>
-                                <AlertDialogDescription>Remove this job entry from the schedule?</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => remove(index)} className="bg-destructive text-white">Delete</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {fields.length === 0 && (
-                    <TableRow>
-                        <TableCell colSpan={12} className="text-center h-48 text-muted-foreground bg-muted/5">
-                            <PlusCircle className="h-10 w-10 mx-auto mb-2 opacity-10" />
-                            <p>No job entries for this schedule.</p>
-                            <p className="text-xs">Click "Add Row" to begin assigning staff.</p>
-                        </TableCell>
-                    </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
-        <div className="flex flex-col sm:flex-row justify-between items-center p-4 border-t gap-4 bg-muted/5">
-             <div>
-              {fields.length === 0 && (
-                <Button type="button" variant="outline" size="sm" onClick={handleCopyYesterday} disabled={!yesterdayScheduleExists}>
-                  <Copy className="mr-2 h-4 w-4"/> Copy Yesterday
-                </Button>
-              )}
-             </div>
-             <div className="flex gap-2 w-full sm:w-auto">
-               <Button type="button" variant="outline" size="sm" onClick={() => append(generateNewItem())}>
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Row
-              </Button>
-              <Button type="submit" size="sm" className="min-w-[120px]">
-                  <Save className="mr-2 h-4 w-4"/>
-                  Save Schedule
-              </Button>
-             </div>
-        </div>
-      </form>
-    </div>
-  );
+              </Popover>} />
+              {form.formState.errors.items?.[index]?.manpowerIds && <p className={styles.error}>Select at least one person.</p>}
+            </td>
+            <td><Input aria-label={`Job type, row ${index + 1}`} {...form.register(`items.${index}.jobType`)} /></td>
+            <td><Input aria-label={`Job No., row ${index + 1}`} {...form.register(`items.${index}.jobNo`)} /></td>
+            <td><Input aria-label={`Project / Vessel, row ${index + 1}`} {...form.register(`items.${index}.projectVesselName`)} /></td>
+            <td><Controller name={`items.${index}.projectId`} control={form.control} render={({field}) => <Select value={field.value} onValueChange={field.onChange}><SelectTrigger aria-label={'Project, row ' + (index + 1)}><SelectValue placeholder="Project" /></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>} /></td>
+            <td><Input aria-label={'Location, row ' + (index + 1)} {...form.register(`items.${index}.location`)} /></td>
+            <td><Input type="time" aria-label={'Reporting time, row ' + (index + 1)} {...form.register(`items.${index}.reportingTime`)} /></td>
+            <td><Input aria-label={'Client / Contact, row ' + (index + 1)} {...form.register(`items.${index}.clientContact`)} /></td>
+            <td><Controller name={`items.${index}.vehicleId`} control={form.control} render={({field}) => <Select value={field.value || 'none'} onValueChange={field.onChange}><SelectTrigger aria-label={'Vehicle, row ' + (index + 1)}><SelectValue placeholder="N/A" /></SelectTrigger><SelectContent><SelectItem value="none">N/A</SelectItem>{vehicleOptions.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicleNumber}</SelectItem>)}</SelectContent></Select>} /></td>
+            <td><Textarea aria-label={'Remarks, row ' + (index + 1)} {...form.register(`items.${index}.remarks`)} /></td>
+          </tr>)}{!fields.length && <tr><td colSpan={11} className={styles.empty}>No job entries. Add a job row to begin.</td></tr>}</tbody>
+        </table>
+      </div>
+      <div className={styles.footer}>
+        <div>{fields.length} job rows · {currentlyAssignedManpowerIdsInThisForm.size} personnel assigned{!fields.length && <Button type="button" variant="outline" size="sm" onClick={handleCopyYesterday} disabled={!yesterdayScheduleExists}><Copy size={14} className="mr-2" />Copy Yesterday</Button>}</div>
+        <div className={styles.footerActions}><Button type="button" variant="outline" onClick={() => form.formState.isDirty ? setConfirmAction('cancel') : onCancel()}>Cancel changes</Button><Button type="submit" disabled={saving}><Save size={16} className="mr-2" />{saving ? 'Saving...' : 'Save Schedule'}</Button></div>
+      </div>
+    </fieldset>
+    <AlertDialog open={!!confirmAction} onOpenChange={open => !open && setConfirmAction(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>{confirmAction === 'delete' ? 'Delete selected job row?' : 'Discard unsaved changes?'}</AlertDialogTitle><AlertDialogDescription>{confirmAction === 'delete' ? 'This removes the job and its personnel assignments from this draft. Save Schedule to apply the deletion.' : 'The saved schedule will remain unchanged.'}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Keep editing</AlertDialogCancel><AlertDialogAction onClick={() => { if (confirmAction === 'delete') { remove(selected); setSelectedRow(Math.max(0, selected - 1)); } else onCancel(); setConfirmAction(null); }}>{confirmAction === 'delete' ? 'Delete row' : 'Discard changes'}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+  </form>;
 }

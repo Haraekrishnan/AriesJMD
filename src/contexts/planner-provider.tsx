@@ -48,7 +48,7 @@ type PlannerContextType = {
   unlockDailyPlanning: (plannerUserId: string, day: string) => void;
   markSinglePlannerCommentAsRead: (plannerUserId: string, day: string, commentId: string) => void;
   dismissPendingUpdate: (eventId: string, day: string) => void;
-  saveJobSchedule: (schedule: Omit<JobSchedule, 'id'> & { id?: string }) => void;
+  saveJobSchedule: (schedule: Omit<JobSchedule, 'id'> & { id?: string }) => Promise<void>;
   savePlantOrder: (monthKey: string, plantName: string, orderedProfileIds: string[]) => void;
   saveJobRecord: (monthKey: string, profileId: string, day: number | null, value: any, field: 'status' | 'dailyOvertime' | 'dailyComments' | 'plant' | 'sundayDuty' | 'isHoliday') => void;
   lockJobRecordSheet: (monthKey: string) => void;
@@ -351,14 +351,14 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
       set(ref(rtdb, path), true);
     }, [user]);
 
-    const saveJobSchedule = useCallback((schedule: Omit<JobSchedule, 'id'> & { id?: string }) => {
-        if (!user || !can.manage_job_schedule) return;
+    const saveJobSchedule = useCallback(async (schedule: Omit<JobSchedule, 'id'> & { id?: string }) => {
+        if (!user || !can.manage_job_schedule) throw new Error('Schedule management permission required');
         const id = schedule.id || `schedule_${schedule.date}`;
         // Sanitize object for Firebase (removes undefined)
         const sanitizedSchedule = JSON.parse(JSON.stringify(schedule, (key, value) =>
             value === undefined ? null : value
         ));
-        update(ref(rtdb, `jobSchedules/${id}`), { ...sanitizedSchedule, id });
+        await update(ref(rtdb, `jobSchedules/${id}`), { ...sanitizedSchedule, id });
     }, [user, can.manage_job_schedule]);
 
     const savePlantOrder = useCallback((monthKey: string, plantName: string, orderedProfileIds: string[]) => {
