@@ -36,7 +36,7 @@
 .rowSelect { width:100%; min-height:30px; border-radius:4px; }
 .rowSelect[aria-pressed=true] { background:#2563eb; color:#fff; }
 .sheet input, .sheet textarea, .sheet [role=combobox] { width:100%; min-width:0; border:1px solid transparent; border-radius:4px; box-shadow:none; background:transparent; padding:5px; font-size:12px; height:34px; }
-.sheet textarea { min-height:62px; resize:vertical; }
+.sheet textarea { display:block; min-height:34px; max-height:none; resize:none; overflow:hidden; white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word; line-height:1.5; box-sizing:border-box; }
 .sheet input:hover, .sheet textarea:hover, .sheet [role=combobox]:hover { border-color:#b9cee8; }
 .sheet input:focus, .sheet textarea:focus, .sheet [role=combobox]:focus { background:white; outline:2px solid #2563eb; outline-offset:0; }
 .remarks { white-space:pre-wrap; }

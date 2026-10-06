@@ -1,5 +1,6 @@
 'use client';
 import styles from './schedule-worksheet.module.css';
+import ScheduleTextCell from './ScheduleTextCell';
 import { scheduleColumns, scheduleAssignmentConflict, copyScheduleJobDetails } from './schedule-worksheet';
 import { useFieldArray, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,7 +9,6 @@ import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -342,15 +342,15 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
               </Popover>} />
               {form.formState.errors.items?.[index]?.manpowerIds && <p className={styles.error}>Select at least one person.</p>}
             </td>
-            <td><Input aria-label={`Job type, row ${index + 1}`} {...form.register(`items.${index}.jobType`)} /></td>
-            <td><Input aria-label={`Job No., row ${index + 1}`} {...form.register(`items.${index}.jobNo`)} /></td>
-            <td><Input aria-label={`Project / Vessel, row ${index + 1}`} {...form.register(`items.${index}.projectVesselName`)} /></td>
+            <td><ScheduleTextCell aria-label={`Job type, row ${index + 1}`} {...form.register(`items.${index}.jobType`)} value={watchedItems[index]?.jobType || ''} /></td>
+            <td><ScheduleTextCell aria-label={`Job No., row ${index + 1}`} {...form.register(`items.${index}.jobNo`)} value={watchedItems[index]?.jobNo || ''} /></td>
+            <td><ScheduleTextCell aria-label={`Project / Vessel, row ${index + 1}`} {...form.register(`items.${index}.projectVesselName`)} value={watchedItems[index]?.projectVesselName || ''} /></td>
             <td><Controller name={`items.${index}.projectId`} control={form.control} render={({field}) => <Select value={field.value} onValueChange={field.onChange}><SelectTrigger aria-label={'Project, row ' + (index + 1)}><SelectValue placeholder="Project" /></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>} /></td>
-            <td><Input aria-label={'Location, row ' + (index + 1)} {...form.register(`items.${index}.location`)} /></td>
+            <td><ScheduleTextCell aria-label={'Location, row ' + (index + 1)} {...form.register(`items.${index}.location`)} value={watchedItems[index]?.location || ''} /></td>
             <td><Input type="time" aria-label={'Reporting time, row ' + (index + 1)} {...form.register(`items.${index}.reportingTime`)} /></td>
-            <td><Input aria-label={'Client / Contact, row ' + (index + 1)} {...form.register(`items.${index}.clientContact`)} /></td>
+            <td><ScheduleTextCell aria-label={'Client / Contact, row ' + (index + 1)} {...form.register(`items.${index}.clientContact`)} value={watchedItems[index]?.clientContact || ''} /></td>
             <td><Controller name={`items.${index}.vehicleId`} control={form.control} render={({field}) => <Select value={field.value || 'none'} onValueChange={field.onChange}><SelectTrigger aria-label={'Vehicle, row ' + (index + 1)}><SelectValue placeholder="N/A" /></SelectTrigger><SelectContent><SelectItem value="none">N/A</SelectItem>{vehicleOptions.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicleNumber}</SelectItem>)}</SelectContent></Select>} /></td>
-            <td><Textarea aria-label={'Remarks, row ' + (index + 1)} {...form.register(`items.${index}.remarks`)} /></td>
+            <td><ScheduleTextCell aria-label={'Remarks, row ' + (index + 1)} {...form.register(`items.${index}.remarks`)} value={watchedItems[index]?.remarks || ''} /></td>
           </tr>)}{!fields.length && <tr><td colSpan={11} className={styles.empty}>No job entries. Add a job row to begin.</td></tr>}</tbody>
         </table>
       </div>
