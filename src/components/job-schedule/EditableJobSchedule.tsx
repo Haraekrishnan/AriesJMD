@@ -1,6 +1,6 @@
 'use client';
 import styles from './schedule-worksheet.module.css';
-import ScheduleTextCell from './ScheduleTextCell';
+import ScheduleFormTextCell from './ScheduleFormTextCell';
 import { scheduleColumns, scheduleAssignmentConflict, copyScheduleJobDetails } from './schedule-worksheet';
 import { useFieldArray, useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -58,6 +58,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
   const { toast } = useToast();
   
   const [selectedRow, setSelectedRow] = useState(0);
+  const [personnelRow, setPersonnelRow] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const saveLock = useRef(false);
   const [confirmAction, setConfirmAction] = useState<'delete' | 'cancel' | null>(null);
@@ -114,7 +115,9 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
     return Array.from(combinedMap.values());
   }, [manpowerProfiles, users, projects]);
 
-  const watchedItems = useWatch({ control: form.control, name: 'items' }) || [];
+  // Only personnel changes refresh the worksheet; typing belongs to individual cells.
+  useWatch({ control: form.control, name: fields.map((_, index) => `items.${index}.manpowerIds` as const), exact: true });
+  const watchedItems = form.getValues('items');
   const watchedName = form.watch('name');
 
   // Recompute from the subscribed draft: nested RHF writes must invalidate availability.
@@ -287,7 +290,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
             <td><button type="button" className={styles.rowSelect} aria-label={'Select row ' + (index + 1)} aria-pressed={index === selected} onClick={() => setSelectedRow(index)}>{index + 1}</button></td>
             <td>
               <ol className={styles.names}>{(watchedItems[index]?.manpowerIds || []).map((id, n) => <li key={id}><span className={styles.personNumber}>{n + 1}</span><span>{displayName(id)}</span><button type="button" className={styles.removeName} aria-label={'Remove ' + displayName(id) + ' from row ' + (index + 1)} onClick={() => handleQuickUnassign(id, index)}><X size={12} /></button></li>)}</ol>
-              <Controller name={`items.${index}.manpowerIds`} control={form.control} render={({ field: controllerField }) => <Popover><PopoverTrigger asChild><Button type="button" variant="link" className={styles.addPersonnel}>+ Add / change personnel</Button></PopoverTrigger>
+              <Controller name={`items.${index}.manpowerIds`} control={form.control} render={({ field: controllerField }) => <Popover open={personnelRow === field.id} onOpenChange={open => setPersonnelRow(open ? field.id : null)}><PopoverTrigger asChild><Button type="button" variant="link" className={styles.addPersonnel}>+ Add / change personnel</Button></PopoverTrigger>
                               <PopoverContent className="w-[min(360px,calc(100vw-24px))] p-0" align="start">
                                 <Command filter={filterPersonnel}>
                                   <CommandInput placeholder="Search manpower..." />
@@ -295,7 +298,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
                                     <CommandEmpty>No results found.</CommandEmpty>
                                     <CommandGroup>
 
-                                      {manpowerOptions.map(option => {
+                                      {(personnelRow === field.id ? manpowerOptions : []).map(option => {
                                         const isSelectedInCurrentItem = controllerField.value?.includes(option.value);
                                         const isAssignedGlobally = globallyAssignedIds.has(option.value);
                                         const isAssignedInThisForm = currentlyAssignedManpowerIdsInThisForm.has(option.value);
@@ -321,15 +324,15 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
               </Popover>} />
               {form.formState.errors.items?.[index]?.manpowerIds && <p className={styles.error}>Select at least one person.</p>}
             </td>
-            <td><ScheduleTextCell aria-label={`Job type, row ${index + 1}`} {...form.register(`items.${index}.jobType`)} value={watchedItems[index]?.jobType || ''} /></td>
-            <td><ScheduleTextCell aria-label={`Job No., row ${index + 1}`} {...form.register(`items.${index}.jobNo`)} value={watchedItems[index]?.jobNo || ''} /></td>
-            <td><ScheduleTextCell aria-label={`Project / Vessel, row ${index + 1}`} {...form.register(`items.${index}.projectVesselName`)} value={watchedItems[index]?.projectVesselName || ''} /></td>
+            <td><ScheduleFormTextCell aria-label={`Job type, row ${index + 1}`} control={form.control} name={`items.${index}.jobType`} /></td>
+            <td><ScheduleFormTextCell aria-label={`Job No., row ${index + 1}`} control={form.control} name={`items.${index}.jobNo`} /></td>
+            <td><ScheduleFormTextCell aria-label={`Project / Vessel, row ${index + 1}`} control={form.control} name={`items.${index}.projectVesselName`} /></td>
             <td><Controller name={`items.${index}.projectId`} control={form.control} render={({field}) => <Select value={field.value} onValueChange={field.onChange}><SelectTrigger aria-label={'Project, row ' + (index + 1)}><SelectValue placeholder="Project" /></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>} /></td>
-            <td><ScheduleTextCell aria-label={'Location, row ' + (index + 1)} {...form.register(`items.${index}.location`)} value={watchedItems[index]?.location || ''} /></td>
+            <td><ScheduleFormTextCell aria-label={'Location, row ' + (index + 1)} control={form.control} name={`items.${index}.location`} /></td>
             <td><Input type="time" aria-label={'Reporting time, row ' + (index + 1)} {...form.register(`items.${index}.reportingTime`)} /></td>
-            <td><ScheduleTextCell aria-label={'Client / Contact, row ' + (index + 1)} {...form.register(`items.${index}.clientContact`)} value={watchedItems[index]?.clientContact || ''} /></td>
+            <td><ScheduleFormTextCell aria-label={'Client / Contact, row ' + (index + 1)} control={form.control} name={`items.${index}.clientContact`} /></td>
             <td><Controller name={`items.${index}.vehicleId`} control={form.control} render={({field}) => <Select value={field.value || 'none'} onValueChange={field.onChange}><SelectTrigger aria-label={'Vehicle, row ' + (index + 1)}><SelectValue placeholder="N/A" /></SelectTrigger><SelectContent><SelectItem value="none">N/A</SelectItem>{vehicleOptions.map(v => <SelectItem key={v.id} value={v.id}>{v.vehicleNumber}</SelectItem>)}</SelectContent></Select>} /></td>
-            <td><ScheduleTextCell aria-label={'Remarks, row ' + (index + 1)} {...form.register(`items.${index}.remarks`)} value={watchedItems[index]?.remarks || ''} /></td>
+            <td><ScheduleFormTextCell aria-label={'Remarks, row ' + (index + 1)} control={form.control} name={`items.${index}.remarks`} /></td>
           </tr>)}{!fields.length && <tr><td colSpan={11} className={styles.empty}>No job entries. Add a job row to begin.</td></tr>}</tbody>
         </table>
       </div>
