@@ -2,7 +2,7 @@
 import styles from './schedule-worksheet.module.css';
 import ScheduleTextCell from './ScheduleTextCell';
 import { scheduleColumns, scheduleAssignmentConflict, copyScheduleJobDetails } from './schedule-worksheet';
-import { useFieldArray, useForm, Controller } from 'react-hook-form';
+import { useFieldArray, useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAppContext } from '@/contexts/app-provider';
@@ -20,7 +20,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { format, subDays, parseISO } from 'date-fns';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -115,14 +114,13 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
     return Array.from(combinedMap.values());
   }, [manpowerProfiles, users, projects]);
 
-  const watchedItems = form.watch('items');
+  const watchedItems = useWatch({ control: form.control, name: 'items' }) || [];
   const watchedName = form.watch('name');
 
-  const currentlyAssignedManpowerIdsInThisForm = useMemo(() => {
-    return new Set(watchedItems.flatMap(item => item.manpowerIds || []));
-  }, [watchedItems]);
+  // Recompute from the subscribed draft: nested RHF writes must invalidate availability.
+  const currentlyAssignedManpowerIdsInThisForm = new Set(watchedItems.flatMap(item => item.manpowerIds || []));
 
-  const assignedPersonnel = useMemo(() => {
+  const assignedPersonnel = (() => {
     const list: { id: string; name: string; rowIndex: number }[] = [];
     watchedItems.forEach((item, index) => {
         if (!item.manpowerIds) return;
@@ -132,23 +130,25 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
         });
     });
     return list;
-  }, [watchedItems, manpowerOptions]);
+  })();
 
   const handleQuickUnassign = (id: string, rowIndex: number) => {
       const currentIds = form.getValues(`items.${rowIndex}.manpowerIds`);
-      form.setValue(`items.${rowIndex}.manpowerIds`, currentIds.filter(val => val !== id), { shouldDirty: true });
+      form.setValue(`items.${rowIndex}.manpowerIds`, (currentIds || []).filter(val => val !== id), { shouldDirty: true, shouldValidate: true });
       setSearchPersonId(null);
       toast({ title: "Person Unassigned" });
   };
 
   const handleQuickReassign = (id: string, fromRowIndex: number, toRowIndex: number) => {
-      if (fromRowIndex === toRowIndex) return;
+      if (fromRowIndex === toRowIndex || !Number.isInteger(toRowIndex)) return;
+      const draft = form.getValues('items');
+      if (!draft[toRowIndex] || !draft[fromRowIndex]?.manpowerIds?.includes(id)) return;
       const fromIds = form.getValues(`items.${fromRowIndex}.manpowerIds`);
-      form.setValue(`items.${fromRowIndex}.manpowerIds`, fromIds.filter(val => val !== id), { shouldDirty: true });
+      form.setValue(`items.${fromRowIndex}.manpowerIds`, fromIds.filter(val => val !== id), { shouldDirty: true, shouldValidate: true });
       
       const toIds = form.getValues(`items.${toRowIndex}.manpowerIds`) || [];
       if (!toIds.includes(id)) {
-          form.setValue(`items.${toRowIndex}.manpowerIds`, [...toIds, id], { shouldDirty: true });
+          form.setValue(`items.${toRowIndex}.manpowerIds`, [...toIds, id], { shouldDirty: true, shouldValidate: true });
       }
       setSearchPersonId(null);
       toast({ title: "Person Reassigned" });
@@ -228,21 +228,19 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
   }, [jobSchedules, selectedDate, watchedName]);
   
   const getAssignmentInfo = (manpowerId: string) => {
-    if (!jobSchedules) return 'Loading...';
-    for (const s of jobSchedules) {
-      if (s.date === selectedDate) {
-        if (s.items && Array.isArray(s.items)) {
-            for (const item of s.items) {
-              if (item.manpowerIds.includes(manpowerId)) {
-                const supervisor = users.find(u => u.id === s.supervisorId);
-                const scheduleName = s.name || `Main Schedule`;
-                return `Assigned in "${scheduleName}" by ${supervisor?.name || 'Unknown'}`;
-              }
-            }
-        }
-      }
+    const row = watchedItems.findIndex(item => item.manpowerIds?.includes(manpowerId));
+    if (row >= 0) return 'Assigned in row ' + (row + 1) + ' of this draft. Use Find assigned person to move them.';
+    for (const other of jobSchedules) {
+      if (other.date !== selectedDate || other.id === schedule?.id) continue;
+      const otherRow = (other.items || []).findIndex(item => item.manpowerIds?.includes(manpowerId));
+      if (otherRow >= 0) return 'Assigned in "' + (other.name || 'Main Schedule') + '", row ' + (otherRow + 1) + '.';
     }
-    return 'Assigned elsewhere on this date.';
+    return 'Assigned in another schedule on this date.';
+  };
+
+  const filterPersonnel = (_value: string, search: string, keywords?: string[]) => {
+    const label = (keywords || []).join(' ').toLowerCase();
+    return search.toLowerCase().trim().split(/\s+/).every(word => label.includes(word)) ? 1 : 0;
   };
 
   const generateNewItem = () => ({
@@ -277,7 +275,7 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
         <Button type="button" size="sm" variant="outline" className="text-destructive" disabled={!fields.length} onClick={() => setConfirmAction('delete')}><Trash2 className="mr-1 h-4 w-4" />Delete row</Button>
         <Popover open={searchPopoverOpen} onOpenChange={setSearchPersonPopoverOpen}>
           <PopoverTrigger asChild><Button type="button" variant="outline" size="sm" className={styles.findPerson}><Search className="mr-2 h-4 w-4" />Find assigned person...</Button></PopoverTrigger>
-          <PopoverContent className="w-[min(360px,calc(100vw-24px))] p-0"><Command><CommandInput placeholder="Search assigned names..." /><CommandList><CommandEmpty>No assigned person found.</CommandEmpty><CommandGroup>{assignedPersonnel.map(p => <CommandItem key={p.id + ':' + p.rowIndex} value={p.name} onSelect={() => choosePerson(p.id)}>{displayName(p.id)} · Row {p.rowIndex + 1}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent>
+          <PopoverContent className="w-[min(360px,calc(100vw-24px))] p-0"><Command filter={filterPersonnel}><CommandInput placeholder="Search assigned names..." /><CommandList><CommandEmpty>No assigned person found.</CommandEmpty><CommandGroup>{assignedPersonnel.map(p => <CommandItem key={p.id + ':' + p.rowIndex} value={p.id + ":" + p.rowIndex} keywords={[p.name, displayName(p.id)]} onSelect={() => choosePerson(p.id)}>{displayName(p.id)} · Row {p.rowIndex + 1}</CommandItem>)}</CommandGroup></CommandList></Command></PopoverContent>
         </Popover>
       </div>
       {searchPersonId && (() => { const found = assignedPersonnel.find(p => p.id === searchPersonId); return found ? <div className={styles.toolbar}><span>{displayName(searchPersonId)} · Row {found.rowIndex + 1}</span><Select onValueChange={v => handleQuickReassign(searchPersonId, found.rowIndex, Number(v))}><SelectTrigger className="w-40"><SelectValue placeholder="Move person to row" /></SelectTrigger><SelectContent>{fields.map((f, i) => <SelectItem key={f.id} value={String(i)} disabled={i === found.rowIndex}>Row {i + 1}</SelectItem>)}</SelectContent></Select><Button type="button" variant="outline" onClick={() => handleQuickUnassign(searchPersonId, found.rowIndex)}>Unassign</Button><Button type="button" variant="ghost" aria-label="Clear person search" onClick={() => setSearchPersonId(null)}><X size={16} /></Button></div> : null; })()}
@@ -291,50 +289,31 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
               <ol className={styles.names}>{(watchedItems[index]?.manpowerIds || []).map((id, n) => <li key={id}><span className={styles.personNumber}>{n + 1}</span><span>{displayName(id)}</span><button type="button" className={styles.removeName} aria-label={'Remove ' + displayName(id) + ' from row ' + (index + 1)} onClick={() => handleQuickUnassign(id, index)}><X size={12} /></button></li>)}</ol>
               <Controller name={`items.${index}.manpowerIds`} control={form.control} render={({ field: controllerField }) => <Popover><PopoverTrigger asChild><Button type="button" variant="link" className={styles.addPersonnel}>+ Add / change personnel</Button></PopoverTrigger>
                               <PopoverContent className="w-[min(360px,calc(100vw-24px))] p-0" align="start">
-                                <Command>
+                                <Command filter={filterPersonnel}>
                                   <CommandInput placeholder="Search manpower..." />
                                   <CommandList>
                                     <CommandEmpty>No results found.</CommandEmpty>
                                     <CommandGroup>
-                                    <TooltipProvider>
+
                                       {manpowerOptions.map(option => {
                                         const isSelectedInCurrentItem = controllerField.value?.includes(option.value);
                                         const isAssignedGlobally = globallyAssignedIds.has(option.value);
                                         const isAssignedInThisForm = currentlyAssignedManpowerIdsInThisForm.has(option.value);
                                         const isDisabled = (isAssignedGlobally || isAssignedInThisForm) && !isSelectedInCurrentItem;
 
-                                        return (
-                                        <Tooltip key={option.value} open={isDisabled ? undefined : false}>
-                                            <TooltipTrigger asChild>
-                                                <div className={cn(isDisabled && 'cursor-not-allowed')}>
-                                                <CommandItem
-                                                    onSelect={() => {
-                                                        if (isDisabled) return;
-                                                        const selected = new Set(controllerField.value || []);
-                                                        if (isSelectedInCurrentItem) {
-                                                        selected.delete(option.value);
-                                                        } else {
-                                                        selected.add(option.value);
-                                                        }
-                                                        controllerField.onChange(Array.from(selected));
-                                                    }}
-                                                    disabled={isDisabled}
-                                                    className={cn('w-full text-xs', isDisabled && 'opacity-50')}
-                                                >
-                                                    <Check className={cn("mr-2 h-4 w-4", isSelectedInCurrentItem ? "opacity-100" : "opacity-0")} />
-                                                    {option.label}
-                                                </CommandItem>
-                                                </div>
-                                            </TooltipTrigger>
-                                            {isDisabled && (
-                                                <TooltipContent>
-                                                    <p>{getAssignmentInfo(option.value)}</p>
-                                                </TooltipContent>
-                                            )}
-                                        </Tooltip>
-                                        )
+                                        return <CommandItem key={option.value} value={option.value} keywords={[option.label]}
+                                          disabled={isDisabled} className="w-full text-xs"
+                                          onSelect={() => {
+                                            const draft = form.getValues('items');
+                                            const ids = draft[index]?.manpowerIds || [];
+                                            if (!ids.includes(option.value) && (globallyAssignedIds.has(option.value) || draft.some((item, row) => row !== index && item.manpowerIds?.includes(option.value)))) return;
+                                            controllerField.onChange(ids.includes(option.value) ? ids.filter(id => id !== option.value) : [...ids, option.value]);
+                                          }}>
+                                          <Check className={cn('mr-2 h-4 w-4 shrink-0', isSelectedInCurrentItem ? 'opacity-100' : 'opacity-0')} />
+                                          <span>{option.label}{isDisabled && <span className="block text-[11px] text-muted-foreground whitespace-normal">{getAssignmentInfo(option.value)}</span>}</span>
+                                        </CommandItem>;
                                       })}
-                                      </TooltipProvider>
+
                                     </CommandGroup>
                                   </CommandList>
                                 </Command>
