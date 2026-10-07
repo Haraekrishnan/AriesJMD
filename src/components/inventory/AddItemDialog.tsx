@@ -21,6 +21,7 @@ import { ScrollArea } from '../ui/scroll-area';
 const itemSchema = z.object({
   name: z.string().min(1, 'Item name is required'),
   serialNumber: z.string().optional(),
+  length: z.string().trim().optional(),
   ariesId: z.string().optional(),
   erpId: z.string().optional(),
   certification: z.string().optional(),
@@ -171,6 +172,7 @@ export default function AddItemDialog({ isOpen, setIsOpen }: AddItemDialogProps)
                         {form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}
                     </div>
                     <div>
+                        <Label htmlFor="item-length">Length (optional)</Label><Input id="item-length" {...form.register('length')} placeholder="e.g. 50 m" />
                         <Label htmlFor="ariesId">Aries ID</Label>
                         <Input id="ariesId" {...form.register('ariesId')} />
                     </div>

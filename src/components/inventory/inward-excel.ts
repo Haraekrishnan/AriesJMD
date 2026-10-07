@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 
 export const inwardColumns = [
-  ['Item Name', 'name'], ['Serial Number', 'serialNumber'], ['Aries ID', 'ariesId'],
+  ['Item Name', 'name'], ['Serial Number', 'serialNumber'], ['Length', 'length'], ['Aries ID', 'ariesId'],
   ['Chest Croll No.', 'chestCrollNo'], ['ERP ID', 'erpId'], ['Certification', 'certification'],
   ['Purchase Date', 'purchaseDate'], ['Inspection Date', 'inspectionDate'],
   ['Inspection Due Date', 'inspectionDueDate'], ['TP Inspection Due Date', 'tpInspectionDueDate'],
@@ -13,6 +13,7 @@ export const inwardInstructions = [
   'Format serial numbers and IDs as Text before entering data to preserve leading zeros and long numbers.',
   'Dates: DD-MM-YYYY (example: 07-10-2026), YYYY-MM-DD, or an Excel date cell. Leave unknown dates blank.',
   'Certificate links must be complete http:// or https:// URLs. Chest Croll No. is for harness items.',
+  'Length is optional. Include the unit, for example 50 m or 1.5 m.',
   'Select Source / Reason and Project in the dialog; these apply to every imported row.',
   'Import adds rows to your draft. Review them, then click Create & Log Items. Import alone saves nothing.',
   'Do not use formulas, merged cells, totals, or password protection. Blank rows are ignored. Duplicate serials are rejected.',

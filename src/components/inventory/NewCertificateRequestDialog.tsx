@@ -45,7 +45,7 @@ export default function NewCertificateRequestDialog({ isOpen, setIsOpen, item, u
     setIsOpen(false);
   };
   
-  const subjectName = item ? `${item.name} (SN: ${item.serialNumber})` : (utMachine ? `${utMachine.machineName} (SN: ${utMachine.serialNumber})` : (dftMachine ? `${dftMachine.machineName} (SN: ${dftMachine.serialNumber})` : 'Item'));
+  const subjectName = item ? `${item.name} (SN: ${item.serialNumber})${item.length ? " · Length: " + item.length : ""}` : (utMachine ? `${utMachine.machineName} (SN: ${utMachine.serialNumber})` : (dftMachine ? `${dftMachine.machineName} (SN: ${dftMachine.serialNumber})` : 'Item'));
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

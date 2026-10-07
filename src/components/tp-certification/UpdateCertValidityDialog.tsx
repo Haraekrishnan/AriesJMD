@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { useInventory } from '@/contexts/inventory-provider';
 
 interface EditableItem {
+  length?: string | null;
   itemId: string;
   itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'Anemometer' | 'DigitalCamera' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim' | 'WeldingMachine' | 'WalkieTalkie';
   materialName: string;
@@ -63,6 +64,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
         }
         return {
           ...listItem,
+          length: fullItem ? ('length' in fullItem ? fullItem.length || '' : '') : listItem.length || '',
           tpInspectionDueDate: dueDate,
           certificateUrl: fullItem?.certificateUrl || '',
           originalIndex: index,
@@ -258,7 +260,7 @@ export default function UpdateCertValidityDialog({ isOpen, setIsOpen, certList }
                                 <Checkbox checked={selectedIndices.has(item.originalIndex)} onCheckedChange={() => handleRowSelect(item.originalIndex)} />
                             </TableCell>
                             <TableCell>{item.originalIndex + 1}</TableCell>
-                            <TableCell>{item.manufacturerSrNo}</TableCell>
+                            <TableCell>{item.manufacturerSrNo}{item.length && <div>Length: {item.length}</div>}</TableCell>
                             <TableCell className="w-48">
                                 <DatePickerInput
                                     value={item.tpInspectionDueDate || undefined}

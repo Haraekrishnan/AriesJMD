@@ -58,6 +58,7 @@ const outwardSchema = z.object({
     itemType: z.string(),
     name: z.string(),
     serialNumber: z.string(),
+    length: z.string().optional(),
   })).min(1, "Please add at least one item."),
 });
 
@@ -138,6 +139,7 @@ export default function NewOutwardDialog({ isOpen, setIsOpen }: { isOpen: boolea
       itemType: item.itemType,
       name,
       serialNumber: String(item.serialNumber || ''),
+      length: 'length' in item ? String(item.length || '') : '',
     }]);
     setSearchTerm('');
   };
@@ -183,7 +185,7 @@ export default function NewOutwardDialog({ isOpen, setIsOpen }: { isOpen: boolea
                   <CommandGroup>
                     {availableItems.map(item => (
                       <CommandItem key={item.id + (item as any).itemType} onSelect={() => handleAdd(item)}>
-                        {(item as any).name || (item as any).machineName || (item as any).equipmentName || `${(item as any).make} ${(item as any).model}`} (SN: {item.serialNumber})
+                        {(item as any).name || (item as any).machineName || (item as any).equipmentName || `${(item as any).make} ${(item as any).model}`} (SN: {item.serialNumber}) {'length' in item && !!item.length && <span> · Length: {String(item.length)}</span>}
                         {item.ariesId && (
                             <span className="ml-2 text-xs text-muted-foreground">
                               (ID: {item.ariesId})

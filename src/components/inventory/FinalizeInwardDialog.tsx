@@ -22,6 +22,7 @@ const newItemSchema = z.object({
   id: z.string(), // This is a temp ID
   name: z.string().min(1, 'Name is required'),
   serialNumber: z.string().min(1, 'Serial is required'),
+  length: z.string().trim().optional(),
   ariesId: z.string().optional(),
   erpId: z.string().optional(),
   certification: z.string().optional(),
@@ -51,6 +52,7 @@ const generateNewItemFromRecord = (record: InwardOutwardRecord) => ({
     id: `item-${Date.now()}-${Math.random()}`,
     name: record.itemName,
     serialNumber: '',
+    length: '',
     ariesId: '',
     erpId: '',
     certification: '',
@@ -94,6 +96,7 @@ export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: Fina
     const itemsToCreate = data.items.map(item => ({
         name: item.name,
         serialNumber: item.serialNumber,
+        length: item.length || '',
         ariesId: item.ariesId,
         erpId: item.erpId,
         certification: item.certification,
@@ -151,7 +154,8 @@ export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: Fina
                           <Input {...form.register(`items.${index}.serialNumber`)} placeholder="Serial Number" />
                           {form.formState.errors.items?.[index]?.serialNumber && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index]?.serialNumber?.message}</p>}
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2"><Label>Length (optional)</Label><Input {...form.register(`items.${index}.length`)} placeholder="e.g. 50 m" /></div>
+                        <div className="space-y-2">
                           <Label>Aries ID</Label>
                           <Input {...form.register(`items.${index}.ariesId`)} placeholder="Aries ID" />
                       </div>

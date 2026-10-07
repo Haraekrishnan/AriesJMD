@@ -481,6 +481,7 @@ export type InventoryItemStatus = 'In Use' | 'In Store' | 'Damaged' | 'Expired' 
 export type InventoryCategory = 'General' | 'Daily Consumable' | 'Job Consumable';
 
 export type InventoryItem = {
+  length?: string; // Optional measurement including unit, e.g. 50 m
   id: string;
   name: string;
   serialNumber: string;
@@ -863,6 +864,7 @@ export type PpeInwardRecord = {
 };
 
 export type TpCertListItem = {
+  length?: string | null;
   condition?: 'New' | 'Old';
   itemId: string;
   itemType: 'Inventory' | 'UTMachine' | 'DftMachine' | 'Anemometer' | 'DigitalCamera' | 'OtherEquipment' | 'LaptopDesktop' | 'MobileSim' | 'WeldingMachine' | 'WalkieTalkie' | 'PneumaticDrillingMachine' | 'PneumaticAngleGrinder' | 'WiredDrillingMachine' | 'CordlessDrillingMachine' | 'WiredAngleGrinder' | 'CordlessAngleGrinder' | 'CordlessReciprocatingSaw';
@@ -1363,6 +1365,7 @@ export type InwardOutwardRecord = {
     finalizedItemIds?: string[];
     isLocked?: boolean;
     movedItemsDetails?: {
+        length?: string;
         name: string;
         serialNumber: string;
         ariesId?: string | null;

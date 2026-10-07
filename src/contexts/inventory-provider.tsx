@@ -539,6 +539,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 serialNumber: serialNumber,
                 isArchived: false,
                 chestCrollNo: row['CHEST CROLL NO'] || null,
+                length: String(row['LENGTH'] ?? row['Length'] ?? ''),
                 ariesId: row['ARIES ID'] || '',
                 inspectionDate: parseDateExcel(row['INSPECTION DATE']),
                 inspectionDueDate: parseDateExcel(row['INSPECTION DUE DATE']),
@@ -655,6 +656,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             const excelHeaderMap: Record<string, keyof InventoryItem> = {
                 'ITEM NAME': 'name',
                 'CHEST CROLL NO': 'chestCrollNo',
+                'LENGTH': 'length',
                 'ARIES ID': 'ariesId',
                 'STATUS': 'status',
                 'TP Certificate Link': 'certificateUrl',
@@ -760,6 +762,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const newRef = push(ref(rtdb, 'tpCertLists'));
         const sanitizedItems = listData.items.map(item => ({
         ...item,
+        length: 'length' in item ? String(item.length || '') : '',
         ariesId: item.ariesId || null,
         chestCrollNo: (item as any).chestCrollNo || null,
         }));
@@ -778,6 +781,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         const { id, ...data } = listData;
         const sanitizedItems = data.items.map(item => ({
         ...item,
+        length: 'length' in item ? String(item.length || '') : '',
         ariesId: item.ariesId || null,
         chestCrollNo: (item as any).chestCrollNo || null,
         }));
@@ -796,6 +800,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             
             const sanitizedItems = requestData.items.map(item => ({
                 ...item,
+                length: 'length' in item ? String(item.length || '') : '',
                 ariesId: item.ariesId || null,
             }));
         
@@ -855,6 +860,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             const { id, ...data } = request;
             const sanitizedItems = data.items.map(item => ({
                 ...item,
+                length: 'length' in item ? String(item.length || '') : '',
                 ariesId: item.ariesId || null,
             }));
             const finalData = sanitizeData({ ...data, items: sanitizedItems });
@@ -893,6 +899,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                     manufacturerSrNo: item.serialNumber,
                     itemId: item.itemId,
                     itemType: item.itemType,
+                    length: 'length' in item ? String(item.length || '') : '',
                     ariesId: item.ariesId || null,
                     chestCrollNo: (inventoryItems.find(i => i.id === item.itemId))?.chestCrollNo || null,
                 })),

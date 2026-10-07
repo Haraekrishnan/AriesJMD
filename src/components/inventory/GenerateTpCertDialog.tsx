@@ -109,6 +109,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
             const fullItem = allSearchableItems.find(i => i.id === listItem.itemId);
             return {
                 ...listItem,
+                length: fullItem ? ('length' in fullItem ? fullItem.length || '' : '') : listItem.length || '',
                 ariesId: fullItem?.ariesId || listItem.ariesId, // Use fullItem's ariesId
                 manufacturerSrNo: (fullItem as any)?.serialNumber || listItem.manufacturerSrNo,
             };
@@ -169,6 +170,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
           itemType: item.itemType,
           materialName,
           manufacturerSrNo: String(serialNumber),
+          length: 'length' in item ? String(item.length || '') : '',
           chestCrollNo: (item as InventoryItem).chestCrollNo || null,
           ariesId: item.ariesId ? String(item.ariesId) : null,
         };
@@ -302,7 +304,7 @@ export default function GenerateTpCertDialog({ isOpen, setIsOpen, existingList =
                             <TableRow key={`${item.itemId}-${item.itemType}`}>
                               <TableCell><input type="checkbox" aria-label={'Select ' + item.materialName + ' ' + item.manufacturerSrNo} checked={checkedItems.has(tpItemKey(item))} onChange={e => setCheckedItems(previous => { const next = new Set(previous); e.target.checked ? next.add(tpItemKey(item)) : next.delete(tpItemKey(item)); return next; })}/></TableCell><TableCell>{index + 1}</TableCell>
                               <TableCell>{item.materialName}</TableCell>
-                              <TableCell>{item.manufacturerSrNo || '-'}</TableCell>
+                              <TableCell>{item.manufacturerSrNo || '-'}{item.length && <div className="text-xs text-muted-foreground">Length: {item.length}</div>}</TableCell>
                               <TableCell>{item.chestCrollNo || '-'}</TableCell>
                               <TableCell><select aria-label={'New or Old for ' + item.materialName + ' ' + item.manufacturerSrNo} className="rounded-md border bg-background p-2 text-sm" value={tpItemCondition(item)} onChange={e => setSelectedItems(previous => setTpItemConditions(previous, new Set([tpItemKey(item)]), e.target.value as 'New' | 'Old'))}><option value="New">New</option><option value="Old">Old</option></select></TableCell><TableCell className="text-right">
                                 <Button variant="ghost" size="icon" onClick={() => handleRemove(item.itemId, item.itemType)}>

@@ -126,7 +126,10 @@ export default function TpCertificationPage() {
                             {filteredLists.map(list => {
                                 const creator = users.find(u => u.id === list.creatorId);
                                 const itemSummary = list.items.reduce((acc, item) => {
-                                    acc[item.materialName] = (acc[item.materialName] || 0) + 1;
+                                    const original = inventoryItems.find(i => i.id === item.itemId);
+                                    const length = original ? original.length : item.length;
+                                    const label = item.materialName + (length ? ' · Length: ' + length : '');
+                                    acc[label] = (acc[label] || 0) + 1;
                                     return acc;
                                 }, {} as Record<string, number>);
                                 const totalQuantity = list.items.length;

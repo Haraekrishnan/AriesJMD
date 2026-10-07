@@ -31,6 +31,7 @@ export default function ViewCertificateRequestDialog({ isOpen, setIsOpen, reques
   const machine = utMachines.find(m => m.id === request.utMachineId);
   
   const subjectName = item ? item.name : machine?.machineName;
+  const subjectLength = item?.length;
   const subjectSN = item ? item.serialNumber : machine?.serialNumber;
 
 
@@ -56,7 +57,7 @@ export default function ViewCertificateRequestDialog({ isOpen, setIsOpen, reques
         <DialogHeader>
           <DialogTitle>Review Certificate Request</DialogTitle>
           <DialogDescription>
-            {requester?.name} is requesting a {request.requestType} for {subjectName} (SN: {subjectSN}).
+            {requester?.name} is requesting a {request.requestType} for {subjectName} (SN: {subjectSN}{subjectLength && <span> · Length: {subjectLength}</span>}).
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

@@ -19,7 +19,7 @@ type InwardOutwardContextType = {
   deleteInwardOutwardRecord: (recordId: string) => Promise<void>;
   lockInwardOutwardRecord: (recordId: string) => Promise<void>;
   unlockInwardOutwardRecord: (recordId: string) => Promise<void>;
-  createOutwardRecord: (items: { itemId: string; itemType: string; name: string, serialNumber: string, ariesId?: string | null }[], destination: string, reason: string) => Promise<void>;
+  createOutwardRecord: (items: { itemId: string; itemType: string; name: string, serialNumber: string, ariesId?: string | null, length?: string }[], destination: string, reason: string) => Promise<void>;
 };
 
 const InwardOutwardContext = createContext<InwardOutwardContextType | undefined>(undefined);
@@ -265,7 +265,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
       }
   }, [user, toast]);
 
-  const createOutwardRecord = useCallback(async (items: { itemId: string; itemType: string; name: string, serialNumber: string, ariesId?: string | null }[], destination: string, reason: string) => {
+  const createOutwardRecord = useCallback(async (items: { itemId: string; itemType: string; name: string, serialNumber: string, ariesId?: string | null, length?: string }[], destination: string, reason: string) => {
     if (!user) return;
 
     const updates: { [key: string]: any } = {};
@@ -286,6 +286,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
         movedItemsDetails: items.map(i => ({
             name: i.name,
             serialNumber: i.serialNumber,
+            length: i.length || '',
             ariesId: i.ariesId || null
         })),
     };

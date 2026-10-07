@@ -118,6 +118,7 @@ const transferRequestSchema = z
           ]),
           name: z.string(),
           serialNumber: z.string(),
+          length: z.string().optional(),
           ariesId: z.string().optional(),
         })
       )
@@ -207,6 +208,7 @@ export default function NewInventoryTransferRequestDialog({
           itemType: 'Inventory', // Assuming pre-selected items are always 'Inventory'
           name: item.name,
           serialNumber: item.serialNumber,
+          length: 'length' in item ? String(item.length || '') : '',
           ariesId: item.ariesId,
         })));
       }
@@ -317,6 +319,7 @@ export default function NewInventoryTransferRequestDialog({
         itemType: item.itemType,
         name: name,
         serialNumber: String(item.serialNumber || ''),
+        length: 'length' in item ? String(item.length || '') : '',
         ariesId: item.ariesId ? String(item.ariesId) : undefined,
       },
     ]);
@@ -550,7 +553,7 @@ export default function NewInventoryTransferRequestDialog({
                       className="flex justify-between items-center bg-muted p-2 rounded-md text-sm mb-2"
                     >
                       <span>
-                        {item.name} (SN: {item.serialNumber}
+                        {item.name}{'length' in item && !!item.length && <span> · Length: {String(item.length)}</span>} (SN: {item.serialNumber}
                         {item.ariesId ? `, ID: ${item.ariesId}` : ""})
                       </span>
                       <Button

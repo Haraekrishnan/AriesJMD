@@ -257,7 +257,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                     <TableRow>
                                                         <TableHead></TableHead>
                                                         <TableHead>Serial No.</TableHead>
-                                                        <TableHead>Aries ID</TableHead>
+                                                        <TableHead>Length</TableHead><TableHead>Aries ID</TableHead>
                                                         {itemName.toLowerCase() === 'harness' && <TableHead>Chest Croll No.</TableHead>}
                                                         <TableHead>Status</TableHead>
                                                         <TableHead>Location</TableHead>
@@ -297,7 +297,7 @@ export default function InventoryTable({ items, selectedItems, onSelectionChange
                                                             {onSelectionChange && <Checkbox checked={selectedItems?.some(sel => sel.id === item.id)} onCheckedChange={() => handleRowSelection(item)} />}
                                                             </TableCell>
                                                             <TableCell>{item.serialNumber}</TableCell>
-                                                            <TableCell>{item.ariesId || 'N/A'}</TableCell>
+                                                            <TableCell>{item.length || '—'}</TableCell><TableCell>{item.ariesId || 'N/A'}</TableCell>
                                                             {itemName.toLowerCase() === 'harness' && <TableCell>{item.chestCrollNo || 'N/A'}</TableCell>}
                                                             <TableCell><Badge variant={getStatusVariant(displayStatus)}>{displayStatus}</Badge></TableCell>
                                                             <TableCell>{getProjectName(item)}</TableCell>

@@ -78,7 +78,7 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
         const worksheet = workbook.addWorksheet(sheetName);
 
         const headerRow = [
-          'Item Name', 'Serial Number', 'Aries ID', 'ERP ID', 'Certification', 'Purchase Date', 'Chest Croll No',
+          'Item Name', 'Serial Number', 'Length', 'Aries ID', 'ERP ID', 'Certification', 'Purchase Date', 'Chest Croll No',
           'Status', 'Location', 'Plant/Unit', 'Inspection Date', 'Inspection Due Date', 'TP Inspection Due Date',
           'Last Updated', 'TP Certificate Link', 'Inspection Certificate Link'
         ];
@@ -92,6 +92,7 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
            worksheet.addRow([
               item.name,
               item.serialNumber,
+              item.length || '',
               item.ariesId || 'N/A',
               item.erpId || 'N/A',
               item.certification || 'N/A',
@@ -150,10 +151,11 @@ export default function InventoryReportDownloads({ items, isSummary = false, sum
        (doc as any).autoTable({ head, body, startY: 20 });
     } else {
       (doc as any).autoTable({
-        head: [['Item Name', 'Serial No.', 'Status', 'Location', 'Insp. Due', 'TP Insp. Due', 'Last Updated']],
+        head: [['Item Name', 'Serial No.', 'Length', 'Status', 'Location', 'Insp. Due', 'TP Insp. Due', 'Last Updated']],
         body: items.map(item => [
           item.name,
           item.serialNumber,
+              item.length || '',
           item.status,
           projects.find(p => p.id === item.projectId)?.name || 'N/A',
           item.inspectionDueDate ? format(new Date(item.inspectionDueDate), 'dd-MM-yyyy') : 'N/A',

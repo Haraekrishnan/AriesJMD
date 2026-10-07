@@ -49,6 +49,7 @@ type FullItem =
   | CordlessReciprocatingSaw;
 
 interface CertItem {
+  length?: string | null;
   condition: 'New' | 'Old';
   itemId: string;
   itemType: string;
@@ -94,6 +95,7 @@ const buildCertItems = (items: TpCertListItem[], allItems: FullItem[]): CertItem
       itemType: it.itemType,
       materialName,
       manufacturerSrNo: serial,
+      length: original ? ('length' in original ? original.length : '') : it.length,
       chestCrollNo: chest,
       ariesId,
     };
@@ -186,7 +188,7 @@ export async function generateTpCertPdf(
     addPageContent();
   
     const head = [
-      ["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report"]
+      ["SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Length", "Submit Last Testing Report"]
     ];
     
     const body: any[] = [];
@@ -205,7 +207,7 @@ export async function generateTpCertPdf(
               getCapacity(item.materialName),
               index === 0 ? groupSize : '', 
               item.condition.toUpperCase(),
-              '', 
+              item.length || '', 
               ''  
           ]);
           if (index === groupSize - 1) {
@@ -332,7 +334,7 @@ export async function generateTpCertExcel(
   subjectCell.alignment = { horizontal: 'left' };
 
   const headerRowIndex = startRow + 5;
-  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Valid upto if Renewal", "Submit Last Testing Report" ];
+  const headers = [ "SR. No.", "Material Name", "Manufacturer Sr. No.", "Chest Croll No.", "Cap. in MT", "Qty in Nos", "New or Old", "Length", "Submit Last Testing Report" ];
   const hr = worksheet.getRow(headerRowIndex);
   hr.values = headers;
   hr.eachCell(cell => {
@@ -349,7 +351,7 @@ export async function generateTpCertExcel(
     { width: 15 },  // Cap. in MT
     { width: 10 },  // Qty in Nos
     { width: 15 },  // New or Old
-    { width: 20 },  // Valid upto if Renewal
+    { width: 20 },  // Length
     { width: 15 },  // Submit Last Testing Report
   ];
 
@@ -366,7 +368,7 @@ export async function generateTpCertExcel(
             getCapacity(item.materialName),
             index === 0 ? group.length : '', 
             item.condition.toUpperCase(),
-            '', 
+            item.length || '', 
             ''  
         ]);
         row.eachCell({ includeEmpty: true }, (cell) => {
@@ -445,6 +447,7 @@ export async function generateChecklistPdf(
     ['Product Name', item.name, 'Date of Purchase', checklist.purchaseDate ? format(parseISO(checklist.purchaseDate), 'dd-MM-yyyy') : ''],
     ['Model', item.name, 'Date of First Use', checklist.firstUseDate ? format(parseISO(checklist.firstUseDate), 'dd-MM-yyyy') : ''],
     ['Serial No.', item.serialNumber, 'Year of Manufacture', checklist.yearOfManufacture || ''],
+    ...(item.length ? [['Length', item.length, '', '']] : []),
     ['ARIES ID', item.ariesId || '', 'Procedure Ref. No', 'ARIES-RAOP-001 [Rev 07]'],
     ['Known Product History', { content: checklist.knownHistory || '', colSpan: 3 }],
   ];

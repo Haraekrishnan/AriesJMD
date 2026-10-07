@@ -46,7 +46,7 @@ export default function RequestCertificateDialog({ isOpen, setIsOpen, item }: Re
         <DialogHeader>
           <DialogTitle>Request Certificate</DialogTitle>
           <DialogDescription>
-            Request a certificate for {item.name} (SN: {item.serialNumber}).
+            Request a certificate for {item.name} (SN: {item.serialNumber}). {item.length && <span>Length: {item.length}</span>}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">

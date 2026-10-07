@@ -223,7 +223,7 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                                                             <div key={idx} className="p-2 rounded bg-muted/40 border border-muted text-[10px] space-y-0.5">
                                                                 <p className="font-black text-slate-700 uppercase">{item.name}</p>
                                                                 <p className="text-muted-foreground"><span className="font-bold">SN:</span> {item.serialNumber}</p>
-                                                                {item.ariesId && <p className="text-muted-foreground"><span className="font-bold">ID:</span> {item.ariesId}</p>}
+                                                                {item.length && <p className="text-muted-foreground">Length: {item.length}</p>}{item.ariesId && <p className="text-muted-foreground"><span className="font-bold">ID:</span> {item.ariesId}</p>}
                                                             </div>
                                                         ))
                                                     ) : (
@@ -233,7 +233,7 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                                                                 <div key={idx} className="p-2 rounded bg-muted/40 border border-muted text-[10px] space-y-0.5">
                                                                     <p className="font-black text-slate-700 uppercase">{item?.name || 'Deleted Item'}</p>
                                                                     <p className="text-muted-foreground"><span className="font-bold">SN:</span> {item?.serialNumber || 'N/A'}</p>
-                                                                    {item?.ariesId && <p className="text-muted-foreground"><span className="font-bold">ID:</span> {item.ariesId}</p>}
+                                                                    {item && 'length' in item && !!item.length && <p className="text-muted-foreground">Length: {String(item.length)}</p>}{item?.ariesId && <p className="text-muted-foreground"><span className="font-bold">ID:</span> {item.ariesId}</p>}
                                                                 </div>
                                                             )
                                                         })

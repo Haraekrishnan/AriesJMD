@@ -33,6 +33,7 @@ export default function ActionRequiredReport({ notifications }: ActionRequiredRe
       
       const columns = [
         { header: 'Serial Number', key: 'serial', width: 25 },
+        { header: 'Length', key: 'length', width: 18 },
         { header: 'Aries ID', key: 'ariesId', width: 20 },
       ];
 
@@ -50,6 +51,7 @@ export default function ActionRequiredReport({ notifications }: ActionRequiredRe
       groupedByItemName[itemName].forEach(({ item, message }) => {
         const rowData: any = {
           serial: item.serialNumber,
+          length: item.length || '',
           ariesId: item.ariesId || 'N/A',
           location: projects.find(p => p.id === item.projectId)?.name || 'N/A',
           action: message,
@@ -70,10 +72,10 @@ export default function ActionRequiredReport({ notifications }: ActionRequiredRe
     doc.text('Inventory - Action Required Report', 14, 15);
     
     (doc as any).autoTable({
-        head: [['Item Name', 'Serial No.', 'Croll No.', 'Project', 'Action']],
+        head: [['Item Name', 'Serial No.', 'Length', 'Croll No.', 'Project', 'Action']],
         body: notifications.map(({ item, message }) => [
             item.name,
-            item.serialNumber,
+            item.serialNumber, item.length || '',
             item.name.toLowerCase() === 'harness' ? item.chestCrollNo || 'N/A' : 'N/A',
             projects.find(p => p.id === item.projectId)?.name || 'N/A',
             message,
