@@ -148,7 +148,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
       const [excel, helper] = await Promise.all([import('xlsx'), import('./inward-excel')]);
       const book = excel.read(await file.arrayBuffer(), { type: 'array', cellDates: false });
       const draft = form.getValues('items');
-      const rows = helper.parseInwardWorkbook(book, [...inventoryItems.map(item => item.serialNumber || ''), ...draft.map(item => item.serialNumber)]);
+      const rows = helper.parseInwardWorkbook(book, [...inventoryItems.map(item => item.serialNumber ?? ''), ...draft.map(item => item.serialNumber)]);
       const imported = rows.map(row => ({ ...generateDefaultItem(), ...row })) as FormValues['items'];
       const empty = draft.length === 1 && Object.entries(draft[0]).every(([key, value]) => key === 'id' || !value);
       if (empty) replace(imported); else append(imported);

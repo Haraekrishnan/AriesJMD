@@ -43,7 +43,13 @@ function dateValue(value: unknown, date1904: boolean): Date | null {
   if (y < 1900 || y > 9999 || date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) throw Error('Invalid calendar date');
   return date;
 }
-export function parseInwardWorkbook(book: XLSX.WorkBook, existingSerials: string[]) {
+// Inventory data predates the typed form: serials may be stored as numbers.
+function serialKey(value: unknown): string {
+  if (typeof value === 'string') return value.trim().toLowerCase();
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return '';
+}
+export function parseInwardWorkbook(book: XLSX.WorkBook, existingSerials: readonly unknown[]) {
   const sheet = book.Sheets.Items || book.Sheets[book.SheetNames[0]];
   if (!sheet?.['!ref']) throw Error('The workbook has no item rows.');
   if (sheet['!merges']?.length) throw Error('Remove merged cells from the Items sheet.');
@@ -58,7 +64,7 @@ export function parseInwardWorkbook(book: XLSX.WorkBook, existingSerials: string
     positions.set(label, c);
   }
   for (const label of ['Item Name', 'Serial Number']) if (!positions.has(label.toLowerCase())) throw Error('Missing column: ' + label);
-  const seen = new Set(existingSerials.filter(Boolean).map(s => s.trim().toLowerCase()));
+  const seen = new Set(existingSerials.map(serialKey).filter(Boolean));
   const rows: Record<string, any>[] = [];
   for (let r = 1; r <= range.e.r; r++) {
     if (!inwardColumns.some(([label]) => { const c = positions.get(label.toLowerCase()); return c !== undefined && sheet[XLSX.utils.encode_cell({r,c})]?.v != null && sheet[XLSX.utils.encode_cell({r,c})]?.v !== ''; })) continue;
@@ -74,7 +80,7 @@ export function parseInwardWorkbook(book: XLSX.WorkBook, existingSerials: string
       } catch (e) { throw Error('Row ' + (r + 1) + ', ' + label + ': ' + (e as Error).message); }
     }
     if (!row.name || !row.serialNumber) throw Error('Row ' + (r + 1) + ': Item Name and Serial Number are required.');
-    const serial = row.serialNumber.toLowerCase();
+    const serial = serialKey(row.serialNumber);
     if (seen.has(serial)) throw Error('Row ' + (r + 1) + ': Serial Number ' + row.serialNumber + ' is already in inventory, this draft, or the workbook.');
     seen.add(serial); rows.push(row);
     if (rows.length > 200) throw Error('Import at most 200 items at a time.');
