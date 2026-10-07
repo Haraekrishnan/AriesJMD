@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { useForm, Controller, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { findManpowerDuplicates } from './manpower-duplicates';
 import { useAppContext } from '@/contexts/app-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -219,6 +220,13 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
     name: "skills"
   });
   
+  const duplicateValues = useWatch({ control: form.control, name: ['name', 'employeeCode', 'epNumber', 'aadharNumber', 'uanNumber', 'mobileNumber', 'newEpNumber'] });
+  const duplicateCandidate = { id: profile?.id, name: duplicateValues[0], employeeCode: duplicateValues[1], epNumber: isChangingEp ? duplicateValues[6] : duplicateValues[2], aadharNumber: duplicateValues[3], uanNumber: duplicateValues[4], mobileNumber: duplicateValues[5] };
+  const duplicateMatches = findManpowerDuplicates(duplicateCandidate, manpowerProfiles);
+  const duplicateKey = JSON.stringify([duplicateCandidate, duplicateMatches.map(m => [m.profile.id, m.reasons])]);
+  const [approvedDuplicateKey, setApprovedDuplicateKey] = useState('');
+  useEffect(() => { setApprovedDuplicateKey(''); }, [isOpen, profile?.id]);
+
   const watchTrade = form.watch('trade');
   const watchStatus = form.watch('status');
   const watchName = form.watch('name');
@@ -317,6 +325,11 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   const onSubmit = async (data: ProfileFormValues) => {
     if (!user) return;
     
+    const matches = findManpowerDuplicates({ ...data, id: profile?.id, epNumber: isChangingEp ? data.newEpNumber : data.epNumber }, manpowerProfiles);
+    if (matches.length && approvedDuplicateKey !== duplicateKey) {
+      toast({ variant: 'destructive', title: 'Possible duplicate profile', description: 'Review the matching records and confirm Proceed anyway inside this dialog, or change the details.' });
+      return;
+    }
     const isBecomingOnLeave = data.status === 'On Leave' && data._originalStatus !== 'On Leave';
 
     try {
@@ -872,6 +885,12 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                   )}
               </div>
             </ScrollArea>
+            {duplicateMatches.length > 0 && <div className="shrink-0 border border-amber-300 bg-amber-50 text-slate-900 rounded-md p-3 text-sm" role="status">
+              <strong>Possible duplicate: {duplicateMatches.length} matching record(s)</strong>
+              <p>These details already exist. Different people can share a name or phone number; please review before proceeding.</p>
+              <ul className="max-h-28 overflow-y-auto my-2">{duplicateMatches.map(({profile: match, reasons}) => <li key={match.id} className="py-1 border-b">{match.name} · Employee: {match.employeeCode || '—'} · EP: {match.epNumber || '—'} · {match.status}<br />{reasons.join(', ')}</li>)}</ul>
+              <label className="flex items-start gap-2"><input type="checkbox" checked={approvedDuplicateKey === duplicateKey} onChange={e => setApprovedDuplicateKey(e.target.checked ? duplicateKey : '')} />Proceed anyway — I reviewed these records and want to save this profile.</label>
+            </div>}
             <DialogFooter className="mt-auto pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
                 <Button type="submit">{profile ? 'Save Changes' : 'Add Profile'}</Button>

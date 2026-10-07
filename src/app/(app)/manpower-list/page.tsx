@@ -1,4 +1,5 @@
 'use client';
+import { manpowerDuplicateGroups } from '@/components/manpower/manpower-duplicates';
 import { useState, useMemo } from 'react';
 import styles from '@/components/manpower/manpower-list.module.css';
 import type { DateRange } from 'react-day-picker';
@@ -48,6 +49,9 @@ export default function ManpowerListPage() {
     const [isCodeRegisterOpen, setIsCodeRegisterOpen] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState<ManpowerProfile | null>(null);
     const [selectedLeave, setSelectedLeave] = useState<LeaveRecord | null>(null);
+    const [showDuplicates, setShowDuplicates] = useState(false);
+    const duplicateGroups = useMemo(() => manpowerDuplicateGroups(manpowerProfiles), [manpowerProfiles]);
+    const duplicateCount = new Set(duplicateGroups.flatMap(group => group.profiles.map(p => p.id))).size;
     const [searchTerm, setSearchTerm] = useState('');
     const [upcomingLeaveSearch, setUpcomingLeaveSearch] = useState('');
     const [overdueLeaveSearch, setOverdueLeaveSearch] = useState('');
@@ -392,6 +396,7 @@ export default function ManpowerListPage() {
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
                             <CardTitle>All Manpower ({filteredProfiles.length})</CardTitle>
+                            <Button type="button" variant="outline" className="mt-2" aria-expanded={showDuplicates} onClick={() => setShowDuplicates(v => !v)}>{showDuplicates ? 'Hide duplicate review' : 'Review possible duplicates'} ({duplicateCount} profiles)</Button>
                             <CardDescription>A list of all manpower profiles in the system.</CardDescription>
                         </div>
                         <div className="relative w-full sm:w-auto sm:max-w-sm">
@@ -406,6 +411,11 @@ export default function ManpowerListPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
+                    <div hidden={!showDuplicates} className="mb-4 border rounded-md p-3">
+                      <h3 className="font-semibold">Possible duplicates across all manpower records</h3>
+                      <p className="text-sm text-muted-foreground">Matches are suggestions, not confirmed duplicates. No records or history are removed.</p>
+                      <div className="max-h-80 overflow-y-auto space-y-3 mt-3">{duplicateGroups.length ? duplicateGroups.map((group, i) => <section key={i} className="border rounded p-2"><strong>{group.reason}</strong>{group.profiles.map(p => <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 border-t py-2"><span>{p.name} · Employee: {p.employeeCode || '—'} · EP: {p.epNumber || '—'} · {p.status}</span>{can.manage_manpower_list && <Button size="sm" variant="outline" onClick={() => handleEdit(p)}>Review profile</Button>}</div>)}</section>) : <p>No matching records found.</p>}</div>
+                    </div>
                     <ManpowerListTable profiles={filteredProfiles} onEdit={handleEdit} />
                 </CardContent>
             </Card>
