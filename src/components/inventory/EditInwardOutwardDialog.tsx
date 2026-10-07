@@ -43,6 +43,7 @@ const newItemSchema = z.object({
 
 const editSchema = z.object({
   date: z.date(),
+  additionalRemarks: z.string().optional(),
   source: z.string().min(1),
   projectId: z.string().min(1, "Project is required"),
   remarks: z.string().optional(),
@@ -87,6 +88,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
             source: record.source,
             projectId: initialProjectId,
             remarks: record.remarks,
+            additionalRemarks: record.additionalRemarks || '',
             items: existingItems.map(item => ({
                 id: item.id,
                 name: item.name,
@@ -138,7 +140,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
             tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : null,
         };
     });
-    updateInwardOutwardRecord(record, sanitizedItems as Partial<InventoryItem>[], data.projectId);
+    updateInwardOutwardRecord({ ...record, source: data.source, date: data.date.toISOString(), remarks: data.remarks || '', additionalRemarks: data.additionalRemarks?.trim() || '' }, sanitizedItems as Partial<InventoryItem>[], data.projectId);
     setIsOpen(false);
   };
   
@@ -163,7 +165,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
             Update details for this transaction and its associated items.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden"><div className="space-y-2 px-1 py-2 shrink-0"><Label>Additional remarks (optional)</Label><Textarea {...form.register('additionalRemarks')} rows={2} placeholder="Additional details or items without serial numbers…" /><p className="text-xs text-muted-foreground">Notes only; these details do not change the item quantities.</p></div>
           <div className="px-1 py-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">

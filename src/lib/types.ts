@@ -1349,6 +1349,7 @@ export type RequestListItem = {
   };
 
 export type InwardOutwardRecord = {
+    additionalRemarks?: string;
     id: string;
     itemId: string;
     itemType: string;

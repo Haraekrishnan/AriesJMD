@@ -1,4 +1,5 @@
 'use client';
+import { Textarea } from '@/components/ui/textarea';
 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -52,6 +53,7 @@ type SearchableItem =
 
 const outwardSchema = z.object({
   destination: z.string().min(1, 'Destination location is required.'),
+  additionalRemarks: z.string().optional(),
   reason: z.string().min(1, 'A reason for the outward transfer is required.'),
   items: z.array(z.object({
     itemId: z.string(),
@@ -77,7 +79,7 @@ export default function NewOutwardDialog({ isOpen, setIsOpen }: { isOpen: boolea
 
   const form = useForm<FormValues>({
     resolver: zodResolver(outwardSchema),
-    defaultValues: { destination: '', reason: '', items: [] },
+    defaultValues: { destination: '', reason: '', additionalRemarks: '', items: [] },
   });
 
   const selectedItems = form.watch("items");
@@ -150,13 +152,13 @@ export default function NewOutwardDialog({ isOpen, setIsOpen }: { isOpen: boolea
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
-    await createOutwardRecord(data.items, data.destination, data.reason);
+    await createOutwardRecord(data.items, data.destination, data.reason, data.additionalRemarks);
     setIsSubmitting(false);
     setIsOpen(false);
   };
 
   const resetForm = () => {
-    form.reset({ destination: '', reason: '', items: [] });
+    form.reset({ destination: '', reason: '', additionalRemarks: '', items: [] });
     setSearchTerm("");
   };
 
@@ -171,7 +173,7 @@ export default function NewOutwardDialog({ isOpen, setIsOpen }: { isOpen: boolea
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+<div className="space-y-2 px-1 py-2 shrink-0"><Label>Additional remarks (optional)</Label><Textarea {...form.register('additionalRemarks')} rows={2} placeholder="Additional details or items without serial numbers…" /><p className="text-xs text-muted-foreground">Notes only; these details do not change the item quantities.</p></div>          <div className="grid grid-cols-2 gap-4">
             <div><Label>Destination</Label><Input {...form.register("destination")} placeholder="e.g., Client Site, Repair Shop"/>{form.formState.errors.destination && <p className="text-xs text-destructive mt-1">{form.formState.errors.destination.message}</p>}</div>
             <div><Label>Reason for Outward</Label><Input {...form.register("reason")} placeholder="e.g., Project deployment, Repair"/>{form.formState.errors.reason && <p className="text-xs text-destructive mt-1">{form.formState.errors.reason.message}</p>}</div>
           </div>

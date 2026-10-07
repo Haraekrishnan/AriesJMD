@@ -1,5 +1,6 @@
-
 'use client';
+import { Textarea } from '@/components/ui/textarea';
+
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -37,6 +38,7 @@ const newItemSchema = z.object({
 });
 
 const finalizeSchema = z.object({
+  additionalRemarks: z.string().optional(),
   items: z.array(newItemSchema).min(1, 'Add at least one item.'),
 });
 
@@ -88,7 +90,7 @@ export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: Fina
   useEffect(() => {
     if (record && isOpen) {
       const newItems = Array.from({ length: record.quantity }, () => generateNewItemFromRecord(record));
-      replace(newItems);
+      replace(newItems); form.setValue('additionalRemarks', record.additionalRemarks || '');
     }
   }, [record, isOpen, replace]);
 
@@ -109,7 +111,7 @@ export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: Fina
         certificateUrl: item.certificateUrl || null,
         inspectionCertificateUrl: item.inspectionCertificateUrl || null,
     }));
-    finalizeInwardPurchase(record.id, itemsToCreate);
+    finalizeInwardPurchase(record.id, itemsToCreate, data.additionalRemarks);
     setIsOpen(false);
   };
   
@@ -129,7 +131,7 @@ export default function FinalizeInwardDialog({ isOpen, setIsOpen, record }: Fina
             Enter details for the {record.quantity} {record.itemName}(s) received from "{record.source}".
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden"><div className="space-y-2 px-1 py-2 shrink-0"><Label>Additional remarks (optional)</Label><Textarea {...form.register('additionalRemarks')} rows={2} placeholder="Additional details or items without serial numbers…" /><p className="text-xs text-muted-foreground">Notes only; these details do not change the item quantities.</p></div>
           <ScrollArea className="flex-1 px-4 -mx-4">
             <div className="space-y-4">
               <datalist id="item-names-list">

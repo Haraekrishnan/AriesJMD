@@ -117,7 +117,7 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                         <TableHead>Item Summary</TableHead>
                         <TableHead className="text-center">Quantity</TableHead>
                         <TableHead>Source / Destination</TableHead>
-                        <TableHead>User</TableHead>
+                        <TableHead>Additional remarks</TableHead><TableHead>User</TableHead>
                         {(can.manage_inward_outward || user?.role === 'Admin') && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                 </TableHeader>
@@ -139,13 +139,13 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                                     <TableCell>
                                         <Badge variant={record.type === 'Inward' ? 'success' : 'destructive'} className="text-[10px] h-5">{record.type}</Badge>
                                     </TableCell>
-                                    <TableCell className="max-w-[200px] truncate text-xs font-medium">{record.type === 'Inward' && record.status === 'Pending Details' && !record.itemName?.includes(',') ? `${record.itemName || 'Items'} - ${record.quantity} nos` : formatItemNames(record.itemName)}</TableCell>
+                                    <TableCell className="min-w-[240px] max-w-[420px] whitespace-normal break-words text-xs font-medium leading-relaxed align-top">{record.type === 'Inward' && record.status === 'Pending Details' && !record.itemName?.includes(',') ? `${record.itemName || 'Items'} - ${record.quantity} nos` : formatItemNames(record.itemName)}</TableCell>
                                     <TableCell className="text-center font-bold">{record.quantity}</TableCell>
-                                    <TableCell className="max-w-[200px] truncate text-xs">
+                                    <TableCell className="min-w-[160px] max-w-[260px] whitespace-normal break-words text-xs align-top">
                                         <p className="font-semibold">{record.source}</p>
-                                        {record.remarks && <p className="text-[10px] text-muted-foreground italic truncate" title={record.remarks}>{record.remarks}</p>}
+                                        {record.remarks && <p className="text-[10px] text-muted-foreground italic whitespace-pre-wrap break-words" title={record.remarks}>{record.remarks}</p>}
                                     </TableCell>
-                                    <TableCell className="text-xs">{recordUser?.name || 'Unknown'}</TableCell>
+                                    <TableCell className="min-w-[180px] max-w-[320px] text-xs whitespace-pre-wrap break-words align-top">{record.additionalRemarks || '—'}</TableCell><TableCell className="text-xs">{recordUser?.name || 'Unknown'}</TableCell>
                                     {(can.manage_inward_outward || user?.role === 'Admin') && (
                                         <TableCell className="text-right">
                                             <div className="flex gap-1 justify-end">
@@ -210,7 +210,7 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                                 </TableRow>
                                 {isExpanded && (
                                     <TableRow className="bg-muted/5">
-                                        <TableCell colSpan={8} className="p-0">
+                                        <TableCell colSpan={(can.manage_inward_outward || user?.role === 'Admin') ? 9 : 8} className="p-0">
                                             <div className="p-4 border-l-4 border-primary/20 bg-card">
                                                 <div className="flex items-center gap-2 mb-3">
                                                     <PackageCheck className="h-4 w-4 text-primary/60" />

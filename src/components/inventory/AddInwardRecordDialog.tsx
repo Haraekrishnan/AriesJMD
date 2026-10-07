@@ -1,4 +1,5 @@
 'use client';
+import { Textarea } from '@/components/ui/textarea';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -39,6 +40,7 @@ const newItemSchema = z.object({
 });
 
 const batchInwardSchema = z.object({
+  additionalRemarks: z.string().optional(),
   source: z.string().min(1, 'A source or reason is required.'),
   projectId: z.string().min(1, 'A project must be selected.'),
   items: z.array(newItemSchema).min(1, 'Add at least one item.'),
@@ -85,7 +87,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
   const form = useForm<FormValues>({
     resolver: zodResolver(batchInwardSchema),
     defaultValues: {
-      source: '',
+      source: '', additionalRemarks: '',
       projectId: projects.find(p => p.name === 'Store')?.id,
       items: [generateDefaultItem()],
     },
@@ -116,7 +118,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
         inspectionCertificateUrl: item.inspectionCertificateUrl || null,
     }));
     try {
-      const count = await batchCreateAndLogItems(itemsToCreate, data.source, data.projectId);
+      const count = await batchCreateAndLogItems(itemsToCreate, data.source, data.projectId, data.additionalRemarks);
       if (!count) throw Error('No items were saved.');
       toast({ title: 'Batch Inward Successful', description: count + ' new items were created and logged.' });
       form.reset(); setImportMessage(''); setImportError(''); setIsOpen(false);
@@ -129,7 +131,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
     if (!open) {
       setImportMessage(''); setImportError('');
       form.reset({
-        source: '',
+        source: '', additionalRemarks: '',
         projectId: projects.find(p => p.name === 'Store')?.id,
         items: [generateDefaultItem()],
       });
@@ -207,7 +209,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
             <p role="status" className="text-sm">{busy ? 'Processing, please wait…' : importMessage}</p>
             {importError && <p role="alert" className="text-sm text-destructive">{importError}</p>}
           </div>
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col mt-4">
+          <div className="space-y-2 px-1 py-2 shrink-0"><Label>Additional remarks (optional)</Label><Textarea {...form.register('additionalRemarks')} rows={2} placeholder="Additional details or items without serial numbers…" /><p className="text-xs text-muted-foreground">Notes only; these details do not change the item quantities.</p></div><div className="flex-1 min-h-0 overflow-hidden flex flex-col mt-4">
             <ScrollArea className="flex-1 px-4">
               <div className="space-y-4">
                 <datalist id="item-names-list">

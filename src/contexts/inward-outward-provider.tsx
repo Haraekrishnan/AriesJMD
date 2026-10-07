@@ -13,13 +13,13 @@ import { useInventory } from './inventory-provider';
 type InwardOutwardContextType = {
   inwardOutwardRecords: InwardOutwardRecord[];
   pendingFinalizationCount: number;
-  batchCreateAndLogItems: (items: Omit<InventoryItem, 'id' | 'lastUpdated'>[], source: string, projectId: string) => Promise<number>;
-  finalizeInwardPurchase: (recordId: string, itemsData: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status' | 'isArchived'>[]) => Promise<void>;
+  batchCreateAndLogItems: (items: Omit<InventoryItem, 'id' | 'lastUpdated'>[], source: string, projectId: string, additionalRemarks?: string) => Promise<number>;
+  finalizeInwardPurchase: (recordId: string, itemsData: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status' | 'isArchived'>[], additionalRemarks?: string) => Promise<void>;
   updateInwardOutwardRecord: (record: InwardOutwardRecord, itemsData: Partial<InventoryItem>[], projectId: string) => Promise<void>;
   deleteInwardOutwardRecord: (recordId: string) => Promise<void>;
   lockInwardOutwardRecord: (recordId: string) => Promise<void>;
   unlockInwardOutwardRecord: (recordId: string) => Promise<void>;
-  createOutwardRecord: (items: { itemId: string; itemType: string; name: string, serialNumber: string, ariesId?: string | null, length?: string }[], destination: string, reason: string) => Promise<void>;
+  createOutwardRecord: (items: { itemId: string; itemType: string; name: string, serialNumber: string, ariesId?: string | null, length?: string }[], destination: string, reason: string, additionalRemarks?: string) => Promise<void>;
 };
 
 const InwardOutwardContext = createContext<InwardOutwardContextType | undefined>(undefined);
@@ -60,7 +60,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     return inwardOutwardRecords.filter(r => r.status === 'Pending Details' && inwardRecordItemIds(r, inventoryItems).length === 0).length;
   }, [inwardOutwardRecords, can.manage_inward_outward, inventoryItems]);
 
-  const batchCreateAndLogItems = useCallback(async (itemsToCreate: Omit<InventoryItem, 'id' | 'lastUpdated'>[], source: string, projectId: string) => {
+  const batchCreateAndLogItems = useCallback(async (itemsToCreate: Omit<InventoryItem, 'id' | 'lastUpdated'>[], source: string, projectId: string, additionalRemarks?: string) => {
     if (!user) return 0;
     
     const updates: { [key: string]: any } = {};
@@ -98,6 +98,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
         quantity: totalQuantity,
         date: now,
         source: source,
+        additionalRemarks: additionalRemarks?.trim() || '',
         userId: user.id,
         status: 'Completed',
         finalizedItemIds: createdItemIds,
@@ -117,7 +118,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     return totalQuantity;
   }, [user, addActivityLog, projects, toast]);
   
-  const finalizeInwardPurchase = useCallback(async (recordId: string, itemsData: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status' | 'isArchived'>[]) => {
+  const finalizeInwardPurchase = useCallback(async (recordId: string, itemsData: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status' | 'isArchived'>[], additionalRemarks?: string) => {
     if (!user) return;
     const updates: { [key: string]: any } = {};
     const now = new Date().toISOString();
@@ -142,6 +143,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
         newFinalizedItemIds.push(newId);
     });
 
+    if (additionalRemarks !== undefined) updates[`inwardOutwardRecords/${recordId}/additionalRemarks`] = additionalRemarks.trim();
     updates[`inwardOutwardRecords/${recordId}/status`] = 'Completed';
     updates[`inwardOutwardRecords/${recordId}/finalizedItemIds`] = newFinalizedItemIds;
     updates[`inwardOutwardRecords/${recordId}/quantity`] = itemsData.length;
@@ -265,7 +267,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
       }
   }, [user, toast]);
 
-  const createOutwardRecord = useCallback(async (items: { itemId: string; itemType: string; name: string, serialNumber: string, ariesId?: string | null, length?: string }[], destination: string, reason: string) => {
+  const createOutwardRecord = useCallback(async (items: { itemId: string; itemType: string; name: string, serialNumber: string, ariesId?: string | null, length?: string }[], destination: string, reason: string, additionalRemarks?: string) => {
     if (!user) return;
 
     const updates: { [key: string]: any } = {};
@@ -279,6 +281,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
         date: now,
         source: `Moved to ${destination}`,
         remarks: reason,
+        additionalRemarks: additionalRemarks?.trim() || '',
         userId: user.id,
         status: 'Completed',
         itemName: items.map(i => i.name).join(', '),
