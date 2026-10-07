@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { PlusCircle, Trash2, ChevronsUpDown, Check } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { Separator } from '../ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -72,6 +72,11 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
   const { inventoryItems } = useInventory();
   const { projects } = useGeneral();
   const { toast } = useToast();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const busyRef = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [importMessage, setImportMessage] = useState('');
+  const [importError, setImportError] = useState('');
 
   const itemNames = useMemo(() => Array.from(new Set(inventoryItems.map(item => item.name))), [inventoryItems]);
 
@@ -84,12 +89,14 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "items"
   });
 
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = async (data: FormValues) => {
+    if (busyRef.current) return;
+    busyRef.current = true; setBusy(true);
     const itemsToCreate = data.items.map(item => ({
         name: item.name,
         serialNumber: item.serialNumber,
@@ -105,13 +112,19 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
         certificateUrl: item.certificateUrl || null,
         inspectionCertificateUrl: item.inspectionCertificateUrl || null,
     }));
-    batchCreateAndLogItems(itemsToCreate, data.source, data.projectId);
-    toast({ title: 'Batch Inward Successful', description: `${itemsToCreate.length} new items were created and logged.` });
-    setIsOpen(false);
+    try {
+      const count = await batchCreateAndLogItems(itemsToCreate, data.source, data.projectId);
+      if (!count) throw Error('No items were saved.');
+      toast({ title: 'Batch Inward Successful', description: count + ' new items were created and logged.' });
+      form.reset(); setImportMessage(''); setImportError(''); setIsOpen(false);
+    } catch { toast({ title: 'Could not save items', description: 'Your draft is still here. Please try again.', variant: 'destructive' }); }
+    finally { busyRef.current = false; setBusy(false); }
   };
 
   const handleOpenChange = (open: boolean) => {
+    if (busyRef.current) return;
     if (!open) {
+      setImportMessage(''); setImportError('');
       form.reset({
         source: '',
         projectId: projects.find(p => p.name === 'Store')?.id,
@@ -119,6 +132,29 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
       });
     }
     setIsOpen(open);
+  };
+
+  const downloadTemplate = async () => {
+    try {
+      const [excel, helper] = await Promise.all([import('xlsx'), import('./inward-excel')]);
+      excel.writeFile(helper.inwardTemplate(), 'Batch-Inward-Template.xlsx');
+    } catch { setImportError('Could not download the template. Please try again.'); }
+  };
+  const importExcel = async (file?: File) => {
+    if (!file || busyRef.current) return;
+    if (!/\.xlsx?$/i.test(file.name) || file.size > 5 * 1024 * 1024) { setImportError('Choose an .xlsx or .xls file smaller than 5 MB.'); return; }
+    busyRef.current = true; setBusy(true); setImportError(''); setImportMessage('');
+    try {
+      const [excel, helper] = await Promise.all([import('xlsx'), import('./inward-excel')]);
+      const book = excel.read(await file.arrayBuffer(), { type: 'array', cellDates: false });
+      const draft = form.getValues('items');
+      const rows = helper.parseInwardWorkbook(book, [...inventoryItems.map(item => item.serialNumber || ''), ...draft.map(item => item.serialNumber)]);
+      const imported = rows.map(row => ({ ...generateDefaultItem(), ...row })) as FormValues['items'];
+      const empty = draft.length === 1 && Object.entries(draft[0]).every(([key, value]) => key === 'id' || !value);
+      if (empty) replace(imported); else append(imported);
+      setImportMessage(imported.length + ' items added to the draft. Review below, then Create & Log Items.');
+    } catch (error) { setImportError((error as Error).message || 'Could not read this workbook.'); }
+    finally { busyRef.current = false; setBusy(false); if (fileInput.current) fileInput.current.value = ''; }
   };
 
   return (
@@ -129,6 +165,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
           <DialogDescription>Create multiple new serialized items and log them as an inward transaction.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
+          <fieldset disabled={busy} className="contents">
           <div className="px-1 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -148,7 +185,26 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
               </div>
             </div>
           </div>
-          <div className="flex-1 overflow-hidden flex flex-col mt-4">
+          <div className="border rounded-md p-3 space-y-2 shrink-0">
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={downloadTemplate}>Download Excel Template</Button>
+              <Button type="button" variant="outline" onClick={() => fileInput.current?.click()}>Import Excel</Button>
+              <input ref={fileInput} type="file" accept=".xlsx,.xls" className="hidden" aria-label="Import inward Excel" onChange={e => void importExcel(e.target.files?.[0])} />
+            </div>
+            <details className="text-sm"><summary className="cursor-pointer font-medium">How to arrange the Excel file</summary>
+              <ul className="list-disc pl-5 space-y-1 mt-2 max-h-32 overflow-y-auto">
+                <li>Use the template's Items sheet. Keep row 1 headings; one item per row, up to 200 items.</li>
+                <li>Item Name and Serial Number are required. Other fields can be blank.</li>
+                <li>Format serial numbers and IDs as Text before entering them to retain leading zeros.</li>
+                <li>Dates: DD-MM-YYYY (07-10-2026), YYYY-MM-DD, or Excel date cells.</li>
+                <li>Use complete http:// or https:// certificate links. No formulas or merged cells.</li>
+                <li>Source and Project above apply to all rows. Import adds to this draft; review before saving.</li>
+              </ul>
+            </details>
+            <p role="status" className="text-sm">{busy ? 'Processing, please wait…' : importMessage}</p>
+            {importError && <p role="alert" className="text-sm text-destructive">{importError}</p>}
+          </div>
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col mt-4">
             <ScrollArea className="flex-1 px-4">
               <div className="space-y-4">
                 <datalist id="item-names-list">
@@ -230,6 +286,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
             <Button type="submit">Create & Log Items</Button>
           </DialogFooter>
+          </fieldset>
         </form>
       </DialogContent>
     </Dialog>

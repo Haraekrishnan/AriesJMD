@@ -111,6 +111,7 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
       } catch(error) {
         console.error(error);
         toast({ title: 'Error', description: 'Failed to create batch inward record.', variant: 'destructive' });
+        throw error;
       }
     }
     return totalQuantity;
