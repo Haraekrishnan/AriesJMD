@@ -135,6 +135,16 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
     return list;
   })();
 
+  const movePersonWithinRow = (id: string, rowIndex: number, direction: -1 | 1) => {
+    const ids = form.getValues(`items.${rowIndex}.manpowerIds`) || [];
+    const from = ids.indexOf(id);
+    const to = from + direction;
+    if (from < 0 || to < 0 || to >= ids.length) return;
+    const reordered = [...ids];
+    [reordered[from], reordered[to]] = [reordered[to], reordered[from]];
+    form.setValue(`items.${rowIndex}.manpowerIds`, reordered, { shouldDirty: true });
+  };
+
   const handleQuickUnassign = (id: string, rowIndex: number) => {
       const currentIds = form.getValues(`items.${rowIndex}.manpowerIds`);
       form.setValue(`items.${rowIndex}.manpowerIds`, (currentIds || []).filter(val => val !== id), { shouldDirty: true, shouldValidate: true });
@@ -289,7 +299,10 @@ export default function EditableJobSchedule({ schedule, selectedDate, globallyAs
           <tbody>{fields.map((field, index) => <tr key={field.id} id={'schedule-row-' + field.id} data-selected={index === selected} onFocusCapture={() => setSelectedRow(index)}>
             <td><button type="button" className={styles.rowSelect} aria-label={'Select row ' + (index + 1)} aria-pressed={index === selected} onClick={() => setSelectedRow(index)}>{index + 1}</button></td>
             <td>
-              <ol className={styles.names}>{(watchedItems[index]?.manpowerIds || []).map((id, n) => <li key={id}><span className={styles.personNumber}>{n + 1}</span><span>{displayName(id)}</span><button type="button" className={styles.removeName} aria-label={'Remove ' + displayName(id) + ' from row ' + (index + 1)} onClick={() => handleQuickUnassign(id, index)}><X size={12} /></button></li>)}</ol>
+              <ol className={styles.names}>{(watchedItems[index]?.manpowerIds || []).map((id, n) => <li key={id}><span className={styles.personNumber}>{n + 1}</span><span>{displayName(id)}</span><span className={styles.personOrder}>
+                <button type="button" className={styles.orderPerson} disabled={n === 0} title="Move employee up within this row" aria-label={'Move ' + displayName(id) + ' up within row ' + (index + 1)} onClick={() => movePersonWithinRow(id, index, -1)}><ArrowUp size={12} /></button>
+                <button type="button" className={styles.orderPerson} disabled={n === (watchedItems[index]?.manpowerIds.length || 0) - 1} title="Move employee down within this row" aria-label={'Move ' + displayName(id) + ' down within row ' + (index + 1)} onClick={() => movePersonWithinRow(id, index, 1)}><ArrowDown size={12} /></button>
+              </span><button type="button" className={styles.removeName} aria-label={'Remove ' + displayName(id) + ' from row ' + (index + 1)} onClick={() => handleQuickUnassign(id, index)}><X size={12} /></button></li>)}</ol>
               <Controller name={`items.${index}.manpowerIds`} control={form.control} render={({ field: controllerField }) => <Popover open={personnelRow === field.id} onOpenChange={open => setPersonnelRow(open ? field.id : null)}><PopoverTrigger asChild><Button type="button" variant="link" className={styles.addPersonnel}>+ Add / change personnel</Button></PopoverTrigger>
                               <PopoverContent className="w-[min(360px,calc(100vw-24px))] p-0" align="start">
                                 <Command filter={filterPersonnel}>

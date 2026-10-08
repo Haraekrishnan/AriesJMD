@@ -58,3 +58,10 @@
  .footerActions { width:100%; }.footerActions button { flex:1; min-height:44px; }
  .removeName { min-width:30px; min-height:30px; }
 }
+
+.personOrder { display:flex; gap:2px; flex-shrink:0; }
+.orderPerson { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border:1px solid #cbd9eb; border-radius:4px; color:#31517e; background:#fff; }
+.orderPerson:hover:not(:disabled) { background:#dbeafe; }
+.orderPerson:disabled { opacity:.3; cursor:default; }
+.orderPerson:focus-visible { outline:2px solid #2563eb; outline-offset:1px; }
+@media(max-width:640px) { .orderPerson { width:30px; height:32px; } }
