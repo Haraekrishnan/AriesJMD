@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Users, Calendar as CalendarIcon, Plane, Book, History } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { format, sub } from 'date-fns';
+import { format, sub, addDays } from 'date-fns';
 import ManpowerLogReportDownloads from '@/components/manpower/ManpowerLogReportDownloads';
 import Link from 'next/link';
 import { Calendar } from '@/components/ui/calendar';
@@ -24,7 +24,13 @@ export default function ManpowerPage() {
     const [isLogbookRegisterOpen, setIsLogbookRegisterOpen] = useState(false);
     const [isLogbookHistoryOpen, setIsLogbookHistoryOpen] = useState(false);
     const [reportDateRange, setReportDateRange] = useState<DateRange | undefined>();
+    const [dirty, setDirty] = useState(false);
     const [summaryDate, setSummaryDate] = useState<Date | undefined>(new Date());
+
+    const selectDate = (date: Date | undefined) => {
+      if (dirty && !window.confirm('Discard unsaved manpower changes and change the date?')) return;
+      setDirty(false); setSummaryDate(date);
+    };
 
     const canManageLogbooks = useMemo(() => {
         if (!user) return false;
@@ -36,8 +42,8 @@ export default function ManpowerPage() {
         <div className={styles.page}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Manpower Details</h1>
-                    <p className="text-muted-foreground">Track daily manpower logs and generate reports.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Daily Manpower</h1>
+                    <p className="text-muted-foreground">Enter daily movements and leave by project.</p>
                 </div>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <Button asChild variant="outline">
@@ -55,7 +61,7 @@ export default function ManpowerPage() {
                 </div>
             </div>
 
-            <ManpowerSummary />
+
 
             <Card className={styles.panel}>
                 <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
@@ -66,8 +72,10 @@ export default function ManpowerPage() {
                                 : `Manpower Summary for ${summaryDate ? format(summaryDate, 'dd LLL, yyyy') : '...'}`
                             }
                         </CardTitle>
-                        <CardDescription>A cumulative overview of manpower counts across all projects for the selected date.</CardDescription>
+                        <CardDescription>Review counts, save the day, and track every correction.</CardDescription>
                     </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" aria-label="Previous day" onClick={()=>selectDate(addDays(summaryDate || new Date(),-1))}>‹</Button>
                     <Popover>
                         <PopoverTrigger asChild>
                           <Button
@@ -82,20 +90,22 @@ export default function ManpowerPage() {
                           <Calendar
                             mode="single"
                             selected={summaryDate}
-                            onSelect={setSummaryDate}
+                            onSelect={selectDate}
                             initialFocus
                           />
                         </PopoverContent>
                     </Popover>
+                    <Button variant="outline" aria-label="Next day" onClick={()=>selectDate(addDays(summaryDate || new Date(),1))}>›</Button>
+                    <Button variant="outline" onClick={()=>selectDate(new Date())}>Today</Button></div>
                 </CardHeader>
                 <CardContent>
-                    <ManpowerSummaryTable selectedDate={summaryDate} />
+                    <ManpowerSummaryTable key={summaryDate ? format(summaryDate, 'yyyy-MM-dd') : 'none'} selectedDate={summaryDate} onDirtyChange={setDirty} />
                 </CardContent>
             </Card>
             
             <Card className={styles.panel}>
                 <CardHeader>
-                    <CardTitle>Generate Manpower Report</CardTitle>
+                    <CardTitle>Download manpower reports</CardTitle>
                     <CardDescription>Select a date range to generate downloadable reports.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col sm:flex-row gap-4 items-center flex-wrap">

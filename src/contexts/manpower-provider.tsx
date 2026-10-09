@@ -2,8 +2,9 @@
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { ManpowerProfile, LeaveRecord, ManpowerLog, MemoRecord, PpeHistoryRecord, LogbookRecord, LogbookStatus, LogbookRequest, Comment, Role, NotificationSettings } from '@/lib/types';
+import { changeDailyEntry, legacyDailyEntry, type DailyEntry, type DailyRow } from '@/components/manpower/daily-entry';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
+import { ref, onValue, set, push, remove, update, get, runTransaction, serverTimestamp } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { format, isBefore, parseISO, startOfDay } from 'date-fns';
 import { useGeneral } from './general-provider';
@@ -15,6 +16,10 @@ import { useToast } from '@/hooks/use-toast';
 type ManpowerContextType = {
   manpowerProfiles: ManpowerProfile[];
   manpowerLogs: ManpowerLog[];
+  dailyEntries: Record<string, DailyEntry>;
+  dailyLoaded: boolean;
+  saveDailyEntry: (date: string, rows: DailyRow[], revision: number) => Promise<void>;
+  unlockDailyEntry: (date: string, reason: string, revision: number) => Promise<void>;
   logbookRequests: LogbookRequest[];
   addManpowerProfile: (profile: Omit<ManpowerProfile, 'id'>) => void;
   updateManpowerProfile: (profile: ManpowerProfile) => void;
@@ -59,6 +64,7 @@ type ManpowerContextType = {
 const createDataListener = <T extends {}>(
     path: string,
     setData: Dispatch<SetStateAction<Record<string, T>>>,
+    onReady?: () => void,
 ) => {
     const dbRef = ref(rtdb, path);
     const listener = onValue(dbRef, (snapshot) => {
@@ -73,6 +79,7 @@ const createDataListener = <T extends {}>(
             }
             return processedData;
         });
+        onReady?.();
     });
     return () => listener();
 };
@@ -84,12 +91,37 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
     const { projects, notificationSettings } = useGeneral();
     const { toast } = useToast();
     
+    const [dailyEntries, setDailyEntries] = useState<Record<string, DailyEntry>>({});
+    const [dailySourceLoaded, setDailyLoaded] = useState(false);
+    const [legacyLoaded, setLegacyLoaded] = useState(false);
+    const dailyLoaded = dailySourceLoaded && legacyLoaded;
+    useEffect(() => onValue(ref(rtdb, 'dailyManpower'), snapshot => { setDailyEntries(snapshot.val() || {}); setDailyLoaded(true); }, () => { setDailyLoaded(false); }), []);
+    const persistDaily = async (date: string, rows: DailyRow[], revision: number, action: 'save' | 'unlock', reason = '') => {
+      if (!user || !dailyLoaded) throw Error('Daily records are not loaded. Please retry.');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw Error('Invalid date.');
+      // Prime the local transaction cache, then recheck the revision on every retry.
+      await get(ref(rtdb, 'dailyManpower/' + date));
+      const result = await runTransaction(ref(rtdb, 'dailyManpower/' + date), current => changeDailyEntry(current || legacyDailyEntry(date, Object.values(manpowerLogsById), projects, users), {
+        date, rows, revision, action, reason, actorId: user.id, actorName: user.name,
+        admin: user.role === 'Admin', canLog: !!can.log_manpower, at: serverTimestamp() as unknown as number,
+      }), { applyLocally: false });
+      if (!result.committed) throw Error('The day could not be saved. Please reload and retry.');
+    };
+    const saveDailyEntry = (date: string, rows: DailyRow[], revision: number) => persistDaily(date, rows, revision, 'save');
+    const unlockDailyEntry = (date: string, reason: string, revision: number) => persistDaily(date, [], revision, 'unlock', reason);
     const [manpowerProfilesById, setManpowerProfilesById] = useState<Record<string, ManpowerProfile>>({});
     const [manpowerLogsById, setManpowerLogsById] = useState<Record<string, ManpowerLog>>({});
     const [logbookRequestsById, setLogbookRequestsById] = useState<Record<string, LogbookRequest>>({});
     
     const manpowerProfiles = useMemo(() => Object.values(manpowerProfilesById), [manpowerProfilesById]);
-    const manpowerLogs = useMemo(() => Object.values(manpowerLogsById), [manpowerLogsById]);
+    const manpowerLogs = useMemo(() => [
+      ...Object.values(manpowerLogsById).filter(log => !dailyEntries[log.date]),
+      ...Object.values(dailyEntries).flatMap(entry => (entry.rows || []).map(row => ({ ...row,
+        id: 'daily:' + entry.date + ':' + row.projectId, date: entry.date,
+        total: row.openingManpower + row.countIn - row.countOut, updatedBy: entry.savedBy,
+        updatedAt: new Date(entry.savedAt).toISOString(),
+      }))),
+    ], [manpowerLogsById, dailyEntries]);
     const logbookRequests = useMemo(() => Object.values(logbookRequestsById), [logbookRequestsById]);
 
     const addManpowerProfile = (profile: Omit<ManpowerProfile, 'id'>) => {
@@ -207,6 +239,7 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
     const addManpowerLog = useCallback(async (logData: Partial<Omit<ManpowerLog, 'id' | 'updatedBy' | 'updatedAt' | 'total' | 'openingManpower'>>, logDate: Date = new Date()) => {
         if (!user) return;
         const dateStr = format(logDate, 'yyyy-MM-dd');
+        if ((await get(ref(rtdb, 'dailyManpower/' + dateStr))).exists() || manpowerLogs.some(log => log.date === dateStr)) throw Error('Use Daily Manpower to edit this saved day.');
         
         const previousLogs = manpowerLogs
             .filter(l => l.projectId === logData.projectId && isBefore(parseISO(l.date), startOfDay(logDate)))
@@ -238,10 +271,11 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
         }
     }, [user, manpowerLogs]);
 
-    const updateManpowerLog = useCallback((logId: string, data: Partial<ManpowerLog>) => {
+    const updateManpowerLog = useCallback(async (logId: string, data: Partial<ManpowerLog>) => {
         if (!user) return;
         const existingLog = manpowerLogs.find(l => l.id === logId);
         if (!existingLog) return;
+        if ((await get(ref(rtdb, 'dailyManpower/' + existingLog.date))).exists() || existingLog) throw Error('Use Daily Manpower to edit this saved day.');
         
         const total = (data.openingManpower ?? existingLog.openingManpower) + (data.countIn ?? existingLog.countIn) - (data.countOut ?? existingLog.countOut);
 
@@ -525,14 +559,14 @@ export function ManpowerProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const unsubscribers = [
             createDataListener('manpowerProfiles', setManpowerProfilesById),
-            createDataListener('manpowerLogs', setManpowerLogsById),
+            createDataListener('manpowerLogs', setManpowerLogsById, () => setLegacyLoaded(true)),
             createDataListener('logbookRequests', setLogbookRequestsById),
         ];
         return () => unsubscribers.forEach(unsubscribe => unsubscribe());
     }, []);
 
     const contextValue: ManpowerContextType = {
-        manpowerProfiles, manpowerLogs, logbookRequests,
+        manpowerProfiles, manpowerLogs, logbookRequests, dailyEntries, dailyLoaded, saveDailyEntry, unlockDailyEntry,
         addManpowerProfile, updateManpowerProfile, addMultipleManpowerProfiles, deleteManpowerProfile,
         addLeaveForManpower, deleteLeaveRecord, confirmManpowerLeave, cancelManpowerLeave, rejoinFromLeave, extendLeave,
         addManpowerLog, updateManpowerLog, isManpowerUpdatedToday, lastManpowerUpdate,

@@ -1,0 +1,32 @@
+.daily { color:#122343; }
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:18px; }
+.stats>div { border:1px solid #d6e2f1; border-radius:8px; padding:16px; background:#fff; }
+.stats span { color:#64748b; display:block; }.stats strong { font-size:28px; }.stats>div:last-child strong,.active { color:#16834a; }
+.toolbar,.audit { display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 0; }.toolbar>input { max-width:250px; }.toolbar p { font-size:12px; color:#64748b; margin-top:4px; }.toolbar label { font-size:13px; display:flex; gap:6px; align-items:center; }.toolbar button,.audit button { gap:6px; }
+.audit { background:#f1f6fc; padding:12px; border-radius:6px; margin-bottom:10px; font-size:13px; }.audit>input { flex:1; min-width:180px; }
+.scroll { overflow:auto; max-height:65vh; border:1px solid #d6e2f1; border-radius:8px; }
+.daily table { width:100%; min-width:1000px; border-collapse:separate; border-spacing:0; font-size:13px; }.daily th { background:#edf3fc; text-align:left; position:sticky; top:0; z-index:1; }.daily td,.daily th { padding:8px 10px; border-right:1px solid #dbe5f1; border-bottom:1px solid #dbe5f1; vertical-align:middle; }.daily tbody tr:nth-child(even) { background:#f8faff; }.daily tr[data-dirty=true] { background:#e9f3ff; }.daily td:first-child { min-width:175px; font-weight:500; }.daily td:nth-child(5) { min-width:250px; }.daily input[type=number] { width:90px; height:38px; font-size:14px; }.daily input:disabled { opacity:1; background:#e8edf4; color:#53647b; }.daily textarea { width:100%; border:1px solid #ccd8e8; border-radius:5px; padding:7px; resize:vertical; min-height:38px; }.daily textarea:disabled { background:#f1f5f9; }.daily tfoot { font-weight:700; background:#e6effc; }.daily td:nth-child(6),.daily td:nth-child(8) { text-align:center; }
+.footer { position:sticky; bottom:0; background:#fff; padding:14px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-top:1px solid #dbe5f1; }.footer span { font-size:12px; color:#64748b; }.footer>div { display:flex; gap:8px; }.warning { padding:12px; background:#fffbeb; color:#92400e; }.history { max-height:350px; overflow:auto; padding:12px; border:1px solid #d6e2f1; margin-bottom:12px; }.history summary { cursor:pointer; padding:10px; font-size:13px; }
+@media(max-width:640px) { .stats {gap:6px;} .stats>div {padding:10px;} .stats span {font-size:11px;} .stats strong {font-size:23px;} .daily input[type=number],.daily textarea {font-size:16px;} .footer>div {width:100%;}.footer button {flex:1;} }
+
+/* Compact daily worksheet: all project rows belong to the page, not a nested scroller. */
+.daily { --entry-height:28px; }
+.daily .stats { gap:10px; margin-bottom:8px; }
+.daily .stats>div { padding:8px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.daily .stats strong { font-size:23px; line-height:1.2; }
+.daily .toolbar { padding:6px 0; gap:8px; }
+.daily .toolbar p { margin-top:0; }
+.daily .toolbar button,.daily .toolbar>input,.daily .audit button { height:30px; }
+.daily .audit { padding:6px 10px; margin-bottom:6px; }
+.daily>.scroll { max-height:none; height:auto; overflow-x:auto; }
+.daily table td,.daily table th,.daily table tbody tr:last-child td { padding:2px 8px; font-weight:normal; }
+.daily table th { height:30px; font-weight:600; }
+.daily table tbody tr:last-child { background:inherit; }
+.daily table tr[data-dirty=true] { background:#e9f3ff; }
+.daily table input[type=number] { height:var(--entry-height); padding:2px 6px; width:76px; font-size:12px; }
+.daily table textarea { display:block; height:var(--entry-height); min-height:var(--entry-height); max-height:var(--entry-height); padding:3px 6px; line-height:20px; font-size:12px; resize:none; overflow:auto; }
+.daily table tfoot td { padding:5px 8px; font-weight:700; }
+.daily .footer { padding:8px 0; gap:8px; }
+.daily .footer button { height:32px; }
+@media(min-width:1000px) and (max-height:850px) { .daily { --entry-height:24px; }.daily table textarea { line-height:18px; padding:2px 6px; }.daily .stats>div { padding:6px 10px; }.daily .stats strong { font-size:21px; } }
+@media(max-width:640px) { .daily { --entry-height:34px; }.daily table input[type=number],.daily table textarea {font-size:16px;}.daily .stats>div {display:block;padding:8px;}.daily .footer button {height:38px;} }
