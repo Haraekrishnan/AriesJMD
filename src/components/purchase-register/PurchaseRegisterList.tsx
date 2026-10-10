@@ -62,7 +62,7 @@ export default function PurchaseRegisterList({ registers }: PurchaseRegisterList
     
     return (
         <>
-            <Table>
+            <Table className="min-w-[760px]">
                 <TableHeader>
                     <TableRow>
                         <TableHead>Date</TableHead>

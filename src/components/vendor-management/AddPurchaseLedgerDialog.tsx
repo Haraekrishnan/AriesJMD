@@ -1,4 +1,5 @@
 'use client';
+import styles from '../purchase-register/purchase-entry.module.css';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -29,7 +30,10 @@ const itemSchema = z.object({
 });
 
 
-const purchaseSchema = z.object({
+const purchaseSchema = z.preprocess((value) => {
+  const data = value as Record<string, unknown>;
+  return data?.purchaseType === 'Service' ? { ...data, items: [] } : value;
+}, z.object({
   vendorId: z.string().min(1, 'Please select a vendor'),
   purchaseType: z.enum(['Goods', 'Service']).default('Goods'),
   poNumber: z.string().optional(),
@@ -70,7 +74,7 @@ const purchaseSchema = z.object({
 }, {
     message: 'Please specify the service type.',
     path: ['otherServiceType'],
-});
+}));
 
 type PurchaseFormValues = z.infer<typeof purchaseSchema>;
 
@@ -136,13 +140,13 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
         grandTotal: totals.grandTotal,
         poDate: data.poDate ? data.poDate.toISOString() : null,
         invoiceDate: data.invoiceDate ? data.invoiceDate.toISOString() : null,
-        remarks: description, // Storing service type/description in remarks
+        remarks: [description, data.remarks?.trim()].filter(Boolean).join(' — '),
     });
     toast({
       title: 'Purchase Logged',
       description: 'The purchase entry has been saved.',
     });
-    setIsOpen(false);
+    handleOpenChange(false);
   };
   
   const handleOpenChange = (open: boolean) => {
@@ -164,14 +168,15 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-4xl h-full flex flex-col">
-        <DialogHeader>
+      <DialogContent className={styles.dialog}>
+        <DialogHeader className={styles.header}>
           <DialogTitle>Add Purchase</DialogTitle>
-          <DialogDescription>Log purchased goods or services against a vendor.</DialogDescription>
+          <DialogDescription>Choose a vendor, enter items or services, then review the total before saving.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-            <ScrollArea className="flex-1 pr-6 -mr-6">
-              <div className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className={styles.form}>
+            <div className={styles.body}>
+              <div className="space-y-5">
+                <div className={styles.section}><h3>1. Purchase details</h3><p className={styles.help}>Vendor is required. PO, invoice and delivery references are optional.</p>
                 <Controller
                   control={form.control}
                   name="purchaseType"
@@ -222,31 +227,19 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
                     )}
                 </div>
 
-                <Separator />
+                </div>
                 
                 {watchedPurchaseType === 'Goods' ? (
-                  <div className="space-y-2">
-                      <Label className="font-semibold">Items</Label>
-                       <div className="grid grid-cols-12 gap-2 font-medium text-xs text-muted-foreground">
-                          <div className="col-span-3">Item Name</div>
-                          <div className="col-span-2">Quantity</div>
-                          <div className="col-span-1">UOM</div>
-                          <div className="col-span-2">Unit Rate</div>
-                          <div className="col-span-1">Tax %</div>
-                          <div className="col-span-2">Total</div>
-                          <div className="col-span-1"></div>
-                      </div>
+                  <div className={styles.section}>
+                      <h3>2. Items purchased</h3><p className={styles.help}>Enter quantity, unit rate and tax. Totals update as you type.</p>
                       {fields.map((field, index) => {
-                          const itemTotal = (watchedItems?.[index]?.quantity * watchedItems?.[index]?.unitRate) * (1 + (watchedItems?.[index]?.tax || 0) / 100);
+                          const itemTotal = ((watchedItems?.[index]?.quantity || 0) * (watchedItems?.[index]?.unitRate || 0)) * (1 + (watchedItems?.[index]?.tax || 0) / 100);
                           return (
-                              <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
-                                  <div className="col-span-3"><Input {...form.register(`items.${index}.name`)} placeholder="Item Name" /></div>
-                                  <div className="col-span-2"><Input type="number" {...form.register(`items.${index}.quantity`)} /></div>
-                                  <div className="col-span-1"><Input {...form.register(`items.${index}.uom`)} /></div>
-                                  <div className="col-span-2"><Input type="number" {...form.register(`items.${index}.unitRate`)} step="0.01" /></div>
-                                  <div className="col-span-1"><Input type="number" {...form.register(`items.${index}.tax`)} /></div>
-                                  <div className="col-span-2 flex items-center h-10 px-3 text-sm font-medium">{formatCurrency(itemTotal || 0)}</div>
-                                  <div className="col-span-1"><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
+                              <div key={field.id} className={styles.itemRow}>
+                                  <div><Label htmlFor={`purchase-name-${index}`}>Item {index + 1} · Name *</Label><Textarea id={`purchase-name-${index}`} rows={2} {...form.register(`items.${index}.name`)} placeholder="Item name / description" />{form.formState.errors.items?.[index]?.name && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.name?.message}</p>}</div>
+                                  {(["quantity", "uom", "unitRate", "tax"] as const).map((key) => <div key={key}><Label htmlFor={`purchase-${index}-${key}`}>{{quantity:"Quantity *",uom:"Unit *",unitRate:"Rate (₹) *",tax:"Tax %"}[key]}</Label><Input id={`purchase-${index}-${key}`} type={key === "uom" ? "text" : "number"} step="any" {...form.register(`items.${index}.${key}`)} />{form.formState.errors.items?.[index]?.[key] && <p className="text-xs text-destructive">{form.formState.errors.items[index]?.[key]?.message}</p>}</div>)}
+                                  <div><Label>Line total</Label><p className="py-2 text-sm font-semibold">{formatCurrency(itemTotal || 0)}</p></div>
+                                  <div><Button type="button" variant="ghost" size="icon" aria-label={`Remove item ${index + 1}`} onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
                               </div>
                           )
                       })}
@@ -256,8 +249,8 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
                       {form.formState.errors.items && <p className="text-xs text-destructive">{form.formState.errors.items.message || form.formState.errors.items.root?.message}</p>}
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className={styles.section}><h3>2. Service details</h3><p className={styles.help}>Describe the service and enter the total payable amount.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label>Service Type</Label>
                             <Controller control={form.control} name="serviceType" render={({ field }) => (
@@ -298,8 +291,7 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
                   </div>
                 )}
               </div>
-            </ScrollArea>
-            <div className="shrink-0 pt-4 border-t">
+            <div className="mt-5 rounded-lg bg-slate-50 p-4 border">
                 <div className="flex justify-end">
                     <div className="w-full max-w-sm space-y-2 text-sm">
                         <div className="flex justify-between"><span>Subtotal:</span><span>{formatCurrency(totals.subTotal)}</span></div>
@@ -312,10 +304,11 @@ export default function AddPurchaseLedgerDialog({ isOpen, setIsOpen }: AddPurcha
                     </div>
                 </div>
             </div>
-            <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+            </div>
+            <DialogFooter className={styles.footer}><span className="text-sm font-semibold">Total: {formatCurrency(totals.grandTotal)}</span><div className={styles.footerActions}>
+                <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
                 <Button type="submit">Save Purchase</Button>
-            </DialogFooter>
+            </div></DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

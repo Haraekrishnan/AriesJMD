@@ -1,4 +1,5 @@
 'use client';
+import styles from './purchase-entry.module.css';
 import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -77,7 +78,7 @@ const ReceiveItemDialog = ({
                         min="0"
                     />
                 </div>
-                <DialogFooter>
+                <DialogFooter className={styles.footer}>
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
                     <Button onClick={handleSubmit} disabled={quantity <= 0 || quantity > maxReceivable}>Receive</Button>
                 </DialogFooter>
@@ -158,16 +159,16 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
   return (
     <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-7xl h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className={`${styles.dialog} ${styles.comparisonDialog}`}>
+        <DialogHeader className={styles.header}>
           <DialogTitle>{quotation.title}</DialogTitle>
           <DialogDescription>
             Created by {creator?.name || 'Unknown'} on {format(parseISO(quotation.createdAt), 'PPP')}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50">
-            <div className="flex items-center gap-4">
+        <div className={styles.viewToolbar}>
+            <div className="flex flex-wrap items-center gap-2">
                 <Label>Status:</Label>
                 <Select value={quotation.status} onValueChange={(val) => handleStatusChange(val as QuotationStatus)} disabled={!canFinalize}>
                     <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
@@ -177,7 +178,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                 </Select>
             </div>
             {(quotation.status === 'PO Sent' || quotation.status === 'Partially Received' || quotation.status === 'Completed') && (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <Label htmlFor="poNumber">PO Number:</Label>
                     <Input id="poNumber" value={poNumber} onChange={e => setPoNumber(e.target.value)} className="w-48"/>
                     <Button onClick={handlePoSave} size="sm">Save PO</Button>
@@ -185,8 +186,8 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
             )}
         </div>
 
-        <div className="flex-1 overflow-auto">
-          <Table>
+        <div className={styles.viewScroll}>
+          <table className={styles.viewTable}>
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
                  <TableHead colSpan={3} className="p-2 text-center font-semibold border-x">
@@ -286,7 +287,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                                 </Tooltip>
                                </TooltipProvider>
                            )}
-                           <span className="text-lg">{formatCurrency(total.grandTotal)}</span>
+                           <span className="text-base">{formatCurrency(total.grandTotal)}</span>
                            {quotation.finalizedVendorId === total.vendorId ? (
                                 <Badge variant="success">Finalized</Badge>
                            ) : (
@@ -315,7 +316,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                   ))}
               </TableRow>
             </TableBody>
-          </Table>
+          </table>
         </div>
         <DialogFooter>
           <Button onClick={() => setIsOpen(false)}>Close</Button>

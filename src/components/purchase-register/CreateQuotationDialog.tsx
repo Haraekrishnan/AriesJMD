@@ -1,5 +1,8 @@
 'use client';
 
+import styles from './purchase-entry.module.css';
+import { Textarea } from '@/components/ui/textarea';
+import { useWatch } from 'react-hook-form';
 import { useForm, useFieldArray, Controller, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,14 +12,13 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { PlusCircle, Trash2, Users2, X, Upload, ListChecks, Loader2, AlertTriangle, Check } from 'lucide-react';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useEffect, useMemo, useState } from 'react';
 import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails, QuotationStatus } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { usePurchase } from '@/contexts/purchase-provider';
 import AddVendorDialog from '../vendor-management/AddVendorDialog';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import * as XLSX from 'xlsx';
 
 const quotationItemSchema = z.object({
@@ -24,7 +26,7 @@ const quotationItemSchema = z.object({
     itemId: z.string(),
     description: z.string().min(1, "Description is required"),
     uom: z.string().min(1, "UOM is required"),
-    itemType: z.string().optional(),
+    itemType: z.string().default('Manual'),
 });
 
 const quotationVendorSchema = z.object({
@@ -76,12 +78,19 @@ const VendorCostSection = ({ vendorIndex, control }: { vendorIndex: number; cont
     );
 };
 
+const VendorTotal = ({ vendorIndex, control }: { vendorIndex: number; control: any }) => {
+    const vendor = useWatch({ control, name: 'vendors.' + vendorIndex });
+    const total = (vendor?.quotes || []).reduce((sum: number, q: any) => sum + (Number(q.quantity) || 0) * (Number(q.rate) || 0) * (1 + (Number(q.taxPercent) || 0) / 100), 0) + (vendor?.additionalCosts || []).reduce((sum: number, c: any) => sum + (Number(c.value) || 0), 0);
+    return <div className="p-4 flex justify-between gap-2 border-t bg-blue-50 text-sm font-semibold"><span>Vendor total</span><span>{new Intl.NumberFormat('en-IN', {style:'currency',currency:'INR'}).format(total)}</span></div>;
+};
+
 export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuotation }: { isOpen: boolean; setIsOpen: (open: boolean) => void; existingQuotation?: Quotation | null }) {
   const { vendors, addQuotation, updateQuotation } = usePurchase();
   const { toast } = useToast();
   const isEditMode = !!existingQuotation;
 
   const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
+  const [editorTab, setEditorTab] = useState('items');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormValues>({
@@ -103,6 +112,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
   useEffect(() => {
     if (isOpen) {
+        setEditorTab(existingQuotation ? 'vendors' : 'items');
         if (existingQuotation) {
             form.reset({
                 title: existingQuotation.title,
@@ -249,20 +259,21 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-[98vw] w-full h-[95vh] flex flex-col p-0 overflow-hidden" onInteractOutside={(e) => e.preventDefault()}>
-        <DialogHeader className="p-6 pb-2 border-b bg-muted/10">
-          <DialogTitle className="text-xl font-bold tracking-tight">{isEditMode ? 'EDIT' : 'NEW'} PRICE COMPARISON</DialogTitle>
-          <DialogDescription className="text-sm font-medium text-muted-foreground mt-0.5">List items and enter merchant rates side-by-side.</DialogDescription>
+      <DialogContent className={`${styles.dialog} ${styles.comparisonDialog}`} onInteractOutside={(e) => e.preventDefault()}>
+        <DialogHeader className={styles.header}>
+          <DialogTitle className="text-xl font-bold tracking-tight">{isEditMode ? 'Edit' : 'New'} price comparison</DialogTitle>
+          <DialogDescription className="text-sm font-medium text-muted-foreground mt-0.5">Add the items you need, compare vendor prices, then review and save.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-6 py-4 border-b bg-card">
-            <div className="flex justify-between items-center gap-6">
+        <form onSubmit={form.handleSubmit(onSubmit, errors => { if (errors.items) setEditorTab('items'); else if (errors.vendors) setEditorTab('vendors'); })} className={styles.form}>
+          <div className="px-4 sm:px-6 py-3 border-b bg-card">
+            <div className="flex flex-wrap justify-between items-end gap-3">
               <div className="flex-1 max-w-xl">
                 <Label htmlFor="title" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Comparison Title</Label>
-                <Input id="title" {...form.register('title')} placeholder="e.g., Monthly Consumables" className="mt-1 h-9 font-semibold" />
+                <Input id="title" {...form.register('title')} placeholder="e.g., Monthly Consumables" className="mt-1 h-9 font-semibold" />{errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                  <Button type="button" variant="outline" onClick={() => setIsAddVendorOpen(true)}>New vendor</Button>
                   <Input type="file" accept=".xlsx, .xls" className="hidden" id="item-import-file" onChange={handleImportItems} />
                   <Button type="button" variant="outline" asChild className="h-9 font-bold uppercase tracking-wider text-xs">
                       <label htmlFor="item-import-file" className="cursor-pointer flex items-center gap-1.5">
@@ -273,52 +284,53 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             </div>
           </div>
 
-          <ScrollArea className="flex-1 overflow-hidden">
-            <div className="p-6 space-y-6">
-              <Accordion type="multiple" defaultValue={["items", "vendors"]} className="space-y-4">
+          <Tabs value={editorTab} onValueChange={setEditorTab} className={styles.editorTabs}>
+              <TabsList className={styles.editorTabBar}><TabsTrigger value="items">Items &amp; descriptions ({itemFields.length})</TabsTrigger><TabsTrigger value="vendors">Vendor prices ({vendorFields.length})</TabsTrigger></TabsList>
+              <div className={styles.body}>
                 
-                <AccordionItem value="items" className="border rounded-lg bg-card overflow-hidden">
-                  <AccordionTrigger className="px-4 py-2 hover:no-underline bg-muted/10 border-b">
+                <TabsContent value="items" className="m-0 border rounded-lg bg-card">
+                  <div className="px-4 py-2 bg-muted/10 border-b">
                     <div className="flex items-center gap-2">
                       <ListChecks className="h-4 w-4 text-primary" />
                       <span className="text-sm font-bold uppercase tracking-wider">1. Requirements List ({itemFields.length})</span>
                     </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="p-0">
-                    <div className="p-4 space-y-2">
+                  </div>
+                  <div>
+                    <div className="p-4 space-y-2"><p className={styles.help}>Enter each item once. Import accepts Description and UOM columns in the first Excel sheet; importing replaces the current items and prices.</p>
                         {itemFields.map((field, index) => (
-                            <div className="flex gap-2 items-center group" key={field.id}>
+                            <div className={styles.requirement} key={field.id}>
                                 <div className="w-8 text-[10px] font-bold text-muted-foreground text-center bg-muted h-8 flex items-center justify-center rounded">{index + 1}</div>
-                                <Input {...form.register(`items.${index}.description`)} placeholder="Item Description" className="h-9 text-sm font-medium" />
-                                <Input {...form.register(`items.${index}.uom`)} placeholder="UOM" className="h-9 text-sm w-20 text-center" />
-                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => handleRemoveItemRow(index)}><Trash2 className="h-4 w-4"/></Button>
+                                <div><Textarea aria-label={`Item ${index + 1} description`} rows={1} {...form.register(`items.${index}.description`)} ref={node => { form.register(`items.${index}.description`).ref(node); if (node) { node.style.height = "auto"; node.style.height = node.scrollHeight + "px"; } }} onInput={event => { const node = event.currentTarget; node.style.height = "auto"; node.style.height = node.scrollHeight + "px"; }} placeholder="Item description" />{errors.items?.[index]?.description && <p className="text-xs text-destructive">{errors.items[index]?.description?.message}</p>}</div>
+                                <Input aria-label={`Item ${index + 1} unit`} {...form.register(`items.${index}.uom`)} placeholder="UOM" className="h-9 text-sm w-20 text-center" />
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-destructive" aria-label={`Remove item ${index + 1}`} onClick={() => handleRemoveItemRow(index)}><Trash2 className="h-4 w-4"/></Button>
                             </div>
                         ))}
                         <Button type="button" variant="outline" className="w-full h-9 border-dashed text-xs font-bold uppercase tracking-wider mt-2" onClick={handleAddItemRow}>
                             <PlusCircle className="h-3.5 w-3.5 mr-2"/>Add Line Item
                         </Button>
                     </div>
-                  </AccordionContent>
-                </AccordionItem>
+                  </div>
+                </TabsContent>
 
-                <AccordionItem value="vendors" className="border rounded-lg bg-card overflow-hidden">
-                  <AccordionTrigger className="px-4 py-2 hover:no-underline bg-muted/10 border-b">
+                <TabsContent value="vendors" className="m-0 border rounded-lg bg-card">
+                  <div className="px-4 py-2 bg-muted/10 border-b">
                     <div className="flex items-center gap-2">
                       <Users2 className="h-4 w-4 text-primary" />
                       <span className="text-sm font-bold uppercase tracking-wider">2. Comparison Matrix</span>
                     </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="p-0">
-                     <ScrollArea className="w-full border-t visible-scrollbar">
-                        <div className="flex min-w-max">
+                  </div>
+                  <div>
+                     <p className="p-3 text-sm text-muted-foreground">Quantity and tax entered for the first vendor are copied to the others. You can then adjust each vendor separately.</p>
+                     <div className="w-full overflow-x-auto border-t">
+                        <div className={styles.matrix}>
                             {/* Sticky Column */}
-                            <div className="w-[280px] shrink-0 border-r bg-muted/30 sticky left-0 z-20 shadow-lg">
-                                <div className="h-14 p-4 border-b flex items-center bg-muted/40">
+                            <div className={styles.itemColumn}>
+                                <div className={styles.vendorHeader}>
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Item Name</span>
                                 </div>
                                 {itemFields.map((item, idx) => (
-                                    <div key={item.id} className="h-16 p-4 border-b flex items-center bg-card">
-                                        <span className="text-xs font-bold truncate leading-tight" title={watch(`items.${idx}.description`)}>
+                                    <div key={item.id} className={styles.quoteRow}>
+                                        <span className="text-sm leading-relaxed whitespace-normal break-words max-h-full overflow-auto" title={watch(`items.${idx}.description`)}>
                                             {idx + 1}. {watch(`items.${idx}.description`) || "..."}
                                         </span>
                                     </div>
@@ -326,28 +338,29 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                             </div>
 
                             {/* Vendor Columns */}
-                            <div className="flex">
+                            <div className={styles.vendorColumns}>
                                 {vendorFields.map((vendorField, vIdx) => (
-                                    <div key={vendorField.id} className={cn("w-[280px] shrink-0 border-r", vIdx === 0 && "bg-primary/[0.02] border-primary/20 shadow-[inset_0_0_10px_rgba(0,0,0,0.02)]")}>
-                                        <div className="h-14 p-2 border-b flex items-center gap-1 bg-muted/5">
+                                    <div key={vendorField.id} className={styles.vendor}>
+                                        <div className={styles.vendorHeader}>
                                             <div className="flex-1">
                                                 <Select value={watch(`vendors.${vIdx}.vendorId`)} onValueChange={(val) => handleVendorSelect(vIdx, val)}>
-                                                    <SelectTrigger className="h-8 text-[10px] font-bold uppercase tracking-wider"><SelectValue placeholder="Merchant..."/></SelectTrigger>
+                                                    <SelectTrigger className="text-sm font-medium"><SelectValue placeholder="Select vendor…"/></SelectTrigger>
                                                     <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
                                                 </Select>
                                             </div>
-                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeVendor(vIdx)}><X className="h-3.5 w-3.5"/></Button>
+                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label={`Remove vendor ${vIdx + 1}`} onClick={() => removeVendor(vIdx)}><X className="h-3.5 w-3.5"/></Button>
                                         </div>
 
                                         {itemFields.map((item, iIdx) => (
-                                            <div key={`${vendorField.id}-${iIdx}`} className="h-16 p-2 border-b flex items-center gap-2">
-                                                <div className="w-12 space-y-1">
+                                            <div key={`${vendorField.id}-${iIdx}`} className={styles.quoteRow}>
+                                                <p className={styles.mobileItem}>{iIdx + 1}. {watch(`items.${iIdx}.description`) || "Untitled item"} · {watch(`items.${iIdx}.uom`)}</p>
+                                                <div className="w-16 shrink-0 space-y-1">
                                                     <Label className="text-[9px] text-muted-foreground font-bold uppercase block text-center">Qty</Label>
                                                     <Controller
                                                         name={`vendors.${vIdx}.quotes.${iIdx}.quantity`}
                                                         control={control}
                                                         render={({ field }) => (
-                                                            <Input 
+                                                            <Input aria-label={`Vendor ${vIdx + 1}, item ${iIdx + 1}: quantity`} 
                                                                 type="number" 
                                                                 step="any"
                                                                 className="h-7 text-xs text-center px-0.5 font-bold"
@@ -373,7 +386,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                                         name={`vendors.${vIdx}.quotes.${iIdx}.rate`}
                                                         control={control}
                                                         render={({ field }) => (
-                                                            <Input 
+                                                            <Input aria-label={`Vendor ${vIdx + 1}, item ${iIdx + 1}: rate`} 
                                                                 type="number" 
                                                                 step="any"
                                                                 className="h-7 text-xs text-right font-bold text-primary px-1"
@@ -383,13 +396,13 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                                         )}
                                                     />
                                                 </div>
-                                                <div className="w-12 space-y-1">
+                                                <div className="w-16 shrink-0 space-y-1">
                                                     <Label className="text-[9px] text-muted-foreground font-bold uppercase block text-center">Tax%</Label>
                                                     <Controller
                                                         name={`vendors.${vIdx}.quotes.${iIdx}.taxPercent`}
                                                         control={control}
                                                         render={({ field }) => (
-                                                            <Input 
+                                                            <Input aria-label={`Vendor ${vIdx + 1}, item ${iIdx + 1}: taxPercent`} 
                                                                 type="number" 
                                                                 step="any"
                                                                 className="h-7 text-xs text-center px-0.5 font-bold"
@@ -413,10 +426,11 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                         ))}
                                         
                                         <VendorCostSection vendorIndex={vIdx} control={control} />
+                                        <VendorTotal vendorIndex={vIdx} control={control} />
                                     </div>
                                 ))}
                                 
-                                <div className="w-[120px] shrink-0 border-r bg-muted/10 flex items-center justify-center p-4">
+                                <div className="w-full sm:w-[140px] shrink-0 bg-muted/10 flex items-center justify-center p-3">
                                     <Button type="button" variant="ghost" className="h-20 w-full flex-col gap-2 rounded-lg border-2 border-dashed" onClick={handleAddVendor}>
                                         <PlusCircle className="h-5 w-5 text-muted-foreground"/>
                                         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Add Vendor</span>
@@ -424,22 +438,21 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
                                 </div>
                             </div>
                         </div>
-                        <ScrollBar orientation="horizontal" />
-                     </ScrollArea>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </div>
-          </ScrollArea>
+                        
+                     </div>
+                  </div>
+                </TabsContent>
+              </div>
+          </Tabs>
           
-          <div className="p-4 border-t bg-card shrink-0 flex justify-between items-center shadow-lg">
+          <div className={styles.footer}>
             <div className="text-xs text-destructive font-bold">
-                {errors.vendors && <p className="flex items-center gap-1"><AlertTriangle className="h-3 w-3"/> Select a vendor for each column.</p>}
+                {Object.keys(errors).length > 0 && <p className="flex items-center gap-1"><AlertTriangle className="h-3 w-3"/> Check the title, item descriptions, units and vendor prices before saving.</p>}
             </div>
-            <div className="flex gap-2">
-                <Button type="button" variant="outline" className="h-10 px-6 font-bold uppercase tracking-wider" onClick={() => setIsOpen(false)}>Cancel</Button>
-                <Button type="submit" className="h-10 px-8 font-black uppercase tracking-widest min-w-[200px]" disabled={isSubmitting}>
-                    {isSubmitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin"/>SAVING...</> : (isEditMode ? 'Update Comparison' : 'Finalize Comparison')}
+            <div className={styles.footerActions}>
+                <Button type="button" variant="outline" className="h-10 px-6" onClick={() => setIsOpen(false)}>Cancel</Button>
+                <Button type="submit" className="h-10 px-6 min-w-[170px]" disabled={isSubmitting}>
+                    {isSubmitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin"/>SAVING...</> : (isEditMode ? 'Update Comparison' : 'Save Comparison')}
                 </Button>
             </div>
           </div>

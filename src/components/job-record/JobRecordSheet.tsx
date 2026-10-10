@@ -1,5 +1,6 @@
 'use client';
 
+import JobRecordNameSearch from './JobRecordNameSearch';
 import styles from './job-record-mobile.module.css';
 import React, { useMemo, useState, useEffect, useCallback, useRef, MouseEvent } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -149,10 +150,8 @@ export default function JobRecordSheet() {
         return tabs;
     }, [plantProjects, canViewUnassigned, jobRecords, monthKey]);
 
-    const filteredAndGroupedProfiles = useMemo(() => {
-        const filtered = searchTerm
-            ? manpowerProfiles.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
-            : manpowerProfiles;
+    const groupedProfiles = useMemo(() => {
+        const filtered = manpowerProfiles;
     
         const getPlantForProfile = (profileId: string) => {
             return jobRecords[monthKey]?.records?.[profileId]?.plant || jobRecords[prevMonthKey]?.records?.[profileId]?.plant || 'Unassigned';
@@ -199,7 +198,15 @@ export default function JobRecordSheet() {
         
         return groups;
     
-    }, [manpowerProfiles, jobRecords, monthKey, prevMonthKey, searchTerm, allTabs, canViewUnassigned]);
+    }, [manpowerProfiles, jobRecords, monthKey, prevMonthKey, allTabs, canViewUnassigned]);
+
+    const filteredAndGroupedProfiles = useMemo(() => {
+        if (!searchTerm) return groupedProfiles;
+        const query = searchTerm.toLowerCase();
+        return Object.fromEntries(Object.entries(groupedProfiles).map(([plant, profiles]) =>
+            [plant, profiles.filter(profile => profile.name.toLowerCase().includes(query))]
+        ));
+    }, [groupedProfiles, searchTerm]);
 
     const batchUpdateJobRecords = useCallback((updates: { profileId: string; day: number; code: string }[]) => {
         updates.forEach(update => {
@@ -952,12 +959,7 @@ export default function JobRecordSheet() {
                             </Button>
                             <div className={styles.search}>
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search by name..."
-                                    className="pl-9 w-full sm:w-64"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
+                                <JobRecordNameSearch onSearch={setSearchTerm} />
                             </div>
                         </div>
                         <div className={styles.actions}>

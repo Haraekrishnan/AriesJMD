@@ -1,8 +1,10 @@
 'use client';
 
+import pageStyles from '@/components/purchase-register/purchase-page.module.css';
+import styles from '@/components/purchase-register/purchase-entry.module.css';
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { IndianRupee, PlusCircle, FileText, Search, FilterX } from 'lucide-react';
+import { IndianRupee, PlusCircle, FileText, Search, FilterX, ShoppingCart } from 'lucide-react';
 import PurchaseRegisterList from '@/components/purchase-register/PurchaseRegisterList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DateRangePicker } from '@/components/ui/date-range-picker';
@@ -125,15 +127,9 @@ export default function PurchasesPage() {
             }
             if (!dateMatch) return false;
 
-            // Item Name & Category Filter
-            if (itemNameSearch || selectedCategory !== 'all') {
-                const matchesItem = q.items?.some(item => {
-                    const nameMatch = !itemNameSearch || item.description.toLowerCase().includes(itemNameSearch.toLowerCase());
-                    const catMatch = selectedCategory === 'all' || item.itemType === selectedCategory || item.newItemCategory === selectedCategory;
-                    return nameMatch && catMatch;
-                });
-                if (!matchesItem) return false;
-            }
+            const search = itemNameSearch.trim().toLowerCase();
+            if (search && !q.title.toLowerCase().includes(search) && !q.items?.some(item => item.description.toLowerCase().includes(search))) return false;
+            if (selectedCategory !== 'all' && !q.items?.some(item => item.itemType === selectedCategory || item.newItemCategory === selectedCategory)) return false;
 
             return true;
         });
@@ -174,13 +170,13 @@ export default function PurchasesPage() {
     }
     
     return (
-        <div className="space-y-8">
+        <div className={styles.page}>
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Purchases</h1>
-                    <p className="text-muted-foreground">Log purchases and compare quotations.</p>
+                    <p className="text-muted-foreground">Record goods and services, compare vendor prices and track purchase history.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className={styles.pageActions}>
                     {can.manage_purchase_register && (
                         <Button onClick={() => setIsCreateQuotationOpen(true)} variant="outline">
                             <FileText className="mr-2 h-4 w-4"/> New Price Comparison
@@ -192,9 +188,20 @@ export default function PurchasesPage() {
                 </div>
             </div>
 
+            <div className={pageStyles.overview}>
+                <div><span className={pageStyles.statIcon}><IndianRupee /></span><div><p>Purchase value</p><strong>{formatCurrency(filteredTotal)}</strong><small>Current filters</small></div></div>
+                <div><span className={pageStyles.statIcon} data-tone="green"><ShoppingCart /></span><div><p>Purchases</p><strong>{filteredPurchases.length}</strong><small>Current filters</small></div></div>
+                <div><span className={pageStyles.statIcon} data-tone="purple"><FileText /></span><div><p>Price comparisons</p><strong>{filteredQuotations.length}</strong><small>Current filters</small></div></div>
+            </div>
+            <Tabs defaultValue="quotations" className={pageStyles.workspace}>
+                <TabsList className={pageStyles.tabs}>
+                    <TabsTrigger value="register">Purchase Register ({filteredPurchases.length})</TabsTrigger>
+                    <TabsTrigger value="quotations">Price Comparison ({filteredQuotations.length})</TabsTrigger>
+                </TabsList>
+
             {/* --- FILTER BAR --- */}
-            <Card>
-                <CardHeader className="pb-3">
+            <Card className={pageStyles.filters}>
+                <CardHeader className="pb-3 pt-4">
                     <CardTitle className="text-lg flex items-center gap-2">
                         <Search className="h-5 w-5" /> Filters
                     </CardTitle>
@@ -202,15 +209,15 @@ export default function PurchasesPage() {
                 <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="space-y-2">
-                            <Label>Item Name</Label>
+                            <Label htmlFor="purchase-search">Search</Label>
                             <Input 
-                                placeholder="Search items..." 
+                                id="purchase-search" placeholder="Search requirement or item..." 
                                 value={itemNameSearch}
                                 onChange={e => setItemNameSearch(e.target.value)}
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label>Category</Label>
+                            <Label>Comparison category</Label>
                             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                                 <SelectTrigger><SelectValue placeholder="All Categories" /></SelectTrigger>
                                 <SelectContent>
@@ -243,7 +250,7 @@ export default function PurchasesPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="space-y-2">
-                            <Label>Filter Type</Label>
+                            <Label>Period</Label>
                             <Select value={filterType} onValueChange={(value) => setFilterType(value as any)}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
@@ -299,19 +306,7 @@ export default function PurchasesPage() {
                 </CardContent>
             </Card>
 
-            <Tabs defaultValue="quotations">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="register">Purchase Register</TabsTrigger>
-                    <TabsTrigger value="quotations">Price Comparison</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="register" className="mt-4 space-y-4">
-                    <StatCard 
-                        title="Total amount for the period" 
-                        value={formatCurrency(filteredTotal)} 
-                        icon={IndianRupee}
-                        description="Sum of all purchases matching the current filter"
-                    />
+                <TabsContent value="register" className="m-0 px-4 pb-4">
                     <Card>
                         <CardHeader>
                             <CardTitle>Purchase History</CardTitle>
@@ -323,7 +318,7 @@ export default function PurchasesPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="quotations" className="mt-4">
+                <TabsContent value="quotations" className="m-0 px-4 pb-0">
                     <QuotationList quotations={filteredQuotations} onEdit={handleEditQuotation} />
                 </TabsContent>
             </Tabs>
