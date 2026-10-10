@@ -1,5 +1,6 @@
 
 'use client';
+import { canSeeJms, isJmsCreator } from '@/components/job-progress/jms-visibility';
 import { jmsAssignees } from '@/components/job-progress/jms-users';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -48,6 +49,9 @@ export default function JobProgressPage() {
   const [isLongPendingDialogOpen, setIsLongPendingDialogOpen] = useState(false);
   const [isCompletedDialogOpen, setIsCompletedDialogOpen] = useState(false);
   
+  const hasTrackerPermission = !!(can.view_job_progress || can.view_all);
+  const hasCreatedJobs = jobProgress.some(job => isJmsCreator(job, user));
+
   const [jmsSearchTerm, setJmsSearchTerm] = useState('');
   const [jmsAssigneeId, setJmsAssigneeId] = useState('all');
   const [jmsProjectFilter, setJmsProjectFilter] = useState('all');
@@ -106,23 +110,9 @@ export default function JobProgressPage() {
     });
   }, [jobProgress, user]);
 
-  const visibleJobs = useMemo(() => jobProgress.filter(job => {
-    const canViewAll = user?.role === 'Admin' || user?.role === 'Project Coordinator' || user?.role === 'Document Controller';
-    if (canViewAll) return true;
-    
-    const isAssignee = job.steps.some(step => step.assigneeId === user?.id);
-    if (isAssignee) return true;
-
-    if (job.creatorId === user?.id) return true;
-    
-    if (!user?.projectIds) return false;
-    
-    return user.projectIds.some(userProjectId => {
-      if (job.projectId === userProjectId) return true;
-      const project = projects.find(p => p.id === job.projectId);
-      return project && user.projectIds?.includes(project.id);
-    });
-  }), [jobProgress, user, projects]);
+  const visibleJobs = useMemo(() => jobProgress.filter(job =>
+    canSeeJms(job, user, hasTrackerPermission)
+  ), [jobProgress, user, hasTrackerPermission]);
 
   const jobsInMonth = useMemo(() => {
     return visibleJobs.filter(job => {
@@ -271,7 +261,7 @@ export default function JobProgressPage() {
     return jmsAssignees(users).filter(u => submitterIds.has(u.id));
   }, [timesheets, users]);
     
-  if (!can.view_job_progress && !can.view_all) {
+  if (!hasTrackerPermission && !hasCreatedJobs) {
       return (
          <Card className="w-full max-w-md mx-auto mt-20">
              <CardHeader className="text-center items-center">
@@ -297,12 +287,12 @@ export default function JobProgressPage() {
           <p className="text-muted-foreground text-sm">Monitor the progress of Job Measurement Sheets, Timesheets, and Documents.</p>
        </div>
       
-       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 h-0 flex-col min-h-0">
+       <Tabs value={hasTrackerPermission ? activeTab : 'jms'} onValueChange={setActiveTab} className="flex flex-1 h-0 flex-col min-h-0">
             <div className="shrink-0 mb-2">
                 <TabsList className="bg-muted/50">
                     <TabsTrigger value="jms" className="text-xs px-3">JMS Tracker</TabsTrigger>
-                    <TabsTrigger value="timesheets" className="text-xs px-3">Timesheet Tracker</TabsTrigger>
-                    <TabsTrigger value="documents" className="text-xs px-3">Document Tracker</TabsTrigger>
+                    {hasTrackerPermission && <TabsTrigger value="timesheets" className="text-xs px-3">Timesheet Tracker</TabsTrigger>}
+                    {hasTrackerPermission && <TabsTrigger value="documents" className="text-xs px-3">Document Tracker</TabsTrigger>}
                 </TabsList>
             </div>
 
@@ -322,7 +312,8 @@ export default function JobProgressPage() {
                                 </Button>
                             </div>
                             <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1.5">
-                                <Button variant="outline" size="sm" onClick={() => setIsPendingDialogOpen(true)} className="relative h-8 px-2">
+
+                                {hasTrackerPermission && <Button variant="outline" size="sm" onClick={() => setIsPendingDialogOpen(true)} className="relative h-8 px-2">
                                     <Bell className="sm:mr-1.5 h-3.5 w-3.5" />
                                     <span className="hidden sm:inline">Pending with Me</span>
                                     {trackerNotificationCount > 0 && (
@@ -330,7 +321,7 @@ export default function JobProgressPage() {
                                             {trackerNotificationCount}
                                         </Badge>
                                     )}
-                                </Button>
+                                </Button>}
                                 {user && ['Admin', 'Project Coordinator', 'Document Controller'].includes(user.role) && (
                                     <Button variant="outline" size="sm" onClick={() => setIsLongPendingDialogOpen(true)} className="h-8 px-2">
                                         <Clock className="sm:mr-1.5 h-3.5 w-3.5" />

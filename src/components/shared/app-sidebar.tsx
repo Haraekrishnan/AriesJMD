@@ -35,6 +35,7 @@ import {
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { useInventory } from '@/contexts/inventory-provider';
+import { isJmsCreator } from '@/components/job-progress/jms-visibility';
 import { usePlanner } from '@/contexts/planner-provider';
 import { usePurchase } from '@/contexts/purchase-provider';
 import { useTask } from '@/contexts/task-provider';
@@ -61,7 +62,7 @@ export function AppSidebar() {
     managementRequests, incidentReports, feedback, unlockRequests
   } = useGeneral();
   const { 
-    plannerEvents, dailyPlannerComments, trackerNotificationCount
+    plannerEvents, dailyPlannerComments, trackerNotificationCount, jobProgress
   } = usePlanner();
   const { payments } = usePurchase();
   const { pendingFinalizationCount } = useInwardOutward();
@@ -137,7 +138,7 @@ export function AppSidebar() {
     { href: '/tasks', icon: CheckSquare, label: 'Manage Tasks', notificationCount: notificationCounts.manageTasks || 0, show: true },
     { href: '/job-schedule', icon: CalendarCheck, label: 'Job Schedule', notificationCount: 0, show: can.manage_job_schedule || can.view_job_schedule || can.view_all },
     { href: '/job-record', icon: ClipboardList, label: 'Job Record', notificationCount: 0, show: true },
-    { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: notificationCounts.jmsTracker || 0, show: can.view_job_progress },
+    { href: '/job-progress', icon: ClipboardList, label: 'JMS Tracker', notificationCount: notificationCounts.jmsTracker || 0, show: can.view_job_progress || can.view_all || jobProgress.some(job => isJmsCreator(job, user)) },
     { href: '/project-management', icon: Briefcase, label: 'Project Management', notificationCount: 0, show: can.manage_projects },
     { href: '/purchases', icon: ShoppingCart, label: 'Purchases', notificationCount: notificationCounts.purchases || 0, show: true },
     { href: '/store-inventory', icon: Warehouse, label: 'Store Inventory', notificationCount: notificationCounts.storeInventory || 0, show: true },
