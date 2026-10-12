@@ -1,5 +1,6 @@
 
 'use client';
+import layout from './manpower-table-layout.module.css';
 import { manpowerDocumentProgress } from './document-progress';
 import { useMemo, useState, useEffect } from 'react';
 import ManpowerPagination from './ManpowerPagination';
@@ -141,9 +142,10 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
     }
 
     return (
-        <div className="overflow-x-auto">
+        <div className={layout.shell}>
         <TooltipProvider>
-            <Table>
+        <div className={layout.scroll} role="region" aria-label="All manpower table — scroll sideways for more columns" tabIndex={0}>
+            <Table className={layout.table}>
                 <TableHeader>
                     <TableRow>
                         <TableHead className="w-[50px]"></TableHead>
@@ -173,7 +175,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                             <React.Fragment key={profile.id}>
                                 <TableRow>
                                     <TableCell>
-                                        <Button variant="ghost" size="icon" onClick={() => toggleRow(profile.id)} className="h-8 w-8">
+                                        <Button variant="ghost" size="icon" onClick={() => toggleRow(profile.id)} aria-label={`Details for ${profile.name}`} aria-expanded={isExpanded} className="h-8 w-8">
                                             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                         </Button>
                                     </TableCell>
@@ -257,7 +259,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                 {isExpanded && (
                                     <TableRow>
                                         <TableCell colSpan={can.manage_manpower_list ? 11 : 10} className="p-0">
-                                            <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-6 bg-muted/50">
+                                            <div className={layout.details}>
                                                 <div className="space-y-4">
                                                     <h4 className="font-semibold text-sm">Personal & Work Details</h4>
                                                     <DetailItem label="Hard Copy File No." value={profile.hardCopyFileNo} />
@@ -284,7 +286,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                                                 <div className="space-y-4">
                                                     <h4 className="font-semibold text-sm">Document Status</h4>
                                                     {(profile.documents || []).map((doc, index) => (
-                                                        <div key={`${doc.name}-${index}`} className="flex justify-between items-center text-sm">
+                                                        <div key={`${doc.name}-${index}`} className={layout.document}>
                                                             <span>{doc.name}</span>
                                                             <Badge variant={doc.status === 'Collected' || doc.status === 'Received' ? 'success' : 'secondary'}>{doc.status}</Badge>
                                                         </div>
@@ -299,6 +301,7 @@ export default function ManpowerListTable({ profiles, onEdit }: ManpowerListTabl
                     })}
                 </TableBody>
             </Table>
+        </div>
         </TooltipProvider>
         <ManpowerPagination total={profiles.length} page={currentPage} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={size => { setPageSize(size); setPage(1); }} />
         </div>
