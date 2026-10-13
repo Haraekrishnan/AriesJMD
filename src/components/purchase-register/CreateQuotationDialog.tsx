@@ -1,9 +1,10 @@
 'use client';
 
+import { comparisonValidationMessages } from './comparison-validation';
 import styles from './purchase-entry.module.css';
 import { Textarea } from '@/components/ui/textarea';
 import { useWatch } from 'react-hook-form';
-import { useForm, useFieldArray, Controller, FormProvider } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -11,21 +12,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Trash2, Users2, X, Upload, ListChecks, Loader2, AlertTriangle, Check } from 'lucide-react';
+import { PlusCircle, Trash2, X, Upload, Loader2, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useEffect, useMemo, useState } from 'react';
-import type { Quotation, QuotationItem, QuotationQuote, QuotationVendorDetails, QuotationStatus } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { useEffect, useState, type CSSProperties } from 'react';
+import type { Quotation } from '@/lib/types';
 import { usePurchase } from '@/contexts/purchase-provider';
 import AddVendorDialog from '../vendor-management/AddVendorDialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import * as XLSX from 'xlsx';
 
 const quotationItemSchema = z.object({
     id: z.string(),
     itemId: z.string(),
-    description: z.string().min(1, "Description is required"),
-    uom: z.string().min(1, "UOM is required"),
+    description: z.string().trim().min(1, "Description is required"),
+    uom: z.string().trim().min(1, "UOM is required"),
     itemType: z.string().default('Manual'),
 });
 
@@ -48,7 +48,7 @@ const quotationVendorSchema = z.object({
 });
 
 const quotationSchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.string().trim().min(1, "Title is required"),
   items: z.array(quotationItemSchema).min(1, "Add at least one item."),
   vendors: z.array(quotationVendorSchema).min(1, "Add at least one vendor."),
 });
@@ -62,7 +62,7 @@ const VendorCostSection = ({ vendorIndex, control }: { vendorIndex: number; cont
     });
 
     return (
-        <div className="space-y-2 mt-4 p-3 bg-muted/20 rounded-md border border-dashed">
+        <div className="space-y-2 p-2 bg-muted/20 rounded-md border border-dashed">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Extra Costs (Freight, etc)</p>
             {fields.map((field, index) => (
                 <div className="flex gap-2 items-start" key={field.id}>
@@ -78,10 +78,18 @@ const VendorCostSection = ({ vendorIndex, control }: { vendorIndex: number; cont
     );
 };
 
+const QuoteAmount = ({control,vendorIndex,itemIndex}: {control:any;vendorIndex:number;itemIndex:number}) => {
+ const quote=useWatch({control,name: 'vendors.'+vendorIndex+'.quotes.'+itemIndex});
+ const amount=(Number(quote?.quantity)||0)*(Number(quote?.rate)||0)*(1+(Number(quote?.taxPercent)||0)/100);
+ return <div><span className="text-xs text-muted-foreground">Amount incl. tax</span><p className="font-semibold mt-2 whitespace-nowrap">{new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(amount)}</p></div>;
+};
+
 const VendorTotal = ({ vendorIndex, control }: { vendorIndex: number; control: any }) => {
-    const vendor = useWatch({ control, name: 'vendors.' + vendorIndex });
+    const allVendors = useWatch({ control, name: 'vendors' }) || [];
+    const vendor = allVendors[vendorIndex];
+    const totals = allVendors.map((v: any) => (v?.quotes || []).reduce((sum: number,q: any) => sum+(Number(q.quantity)||0)*(Number(q.rate)||0)*(1+(Number(q.taxPercent)||0)/100),0)+(v?.additionalCosts || []).reduce((sum: number,c: any) => sum+(Number(c.value)||0),0));
     const total = (vendor?.quotes || []).reduce((sum: number, q: any) => sum + (Number(q.quantity) || 0) * (Number(q.rate) || 0) * (1 + (Number(q.taxPercent) || 0) / 100), 0) + (vendor?.additionalCosts || []).reduce((sum: number, c: any) => sum + (Number(c.value) || 0), 0);
-    return <div className="p-4 flex justify-between gap-2 border-t bg-blue-50 text-sm font-semibold"><span>Vendor total</span><span>{new Intl.NumberFormat('en-IN', {style:'currency',currency:'INR'}).format(total)}</span></div>;
+    return <div className="p-2 flex justify-between gap-2 bg-blue-50 text-sm font-semibold"><span>Total incl. tax{allVendors.length > 1 && total > 0 && totals.every((n: number) => n > 0) && total === Math.min(...totals) && <small className="block text-green-700">Lowest total</small>}</span><span>{new Intl.NumberFormat('en-IN', {style:'currency',currency:'INR'}).format(total)}</span></div>;
 };
 
 export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuotation }: { isOpen: boolean; setIsOpen: (open: boolean) => void; existingQuotation?: Quotation | null }) {
@@ -90,11 +98,13 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   const isEditMode = !!existingQuotation;
 
   const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
-  const [editorTab, setEditorTab] = useState('items');
+  const [errorPopup, setErrorPopup] = useState<{ title: string; messages: string[] } | null>(null);
+  const showError = (title: string, messages: string[]) => setErrorPopup({ title, messages });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(quotationSchema),
+    shouldUnregister: false,
     defaultValues: { title: '', items: [], vendors: [] },
   });
 
@@ -112,7 +122,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
   useEffect(() => {
     if (isOpen) {
-        setEditorTab(existingQuotation ? 'vendors' : 'items');
+        setErrorPopup(null);
         if (existingQuotation) {
             form.reset({
                 title: existingQuotation.title,
@@ -124,6 +134,10 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
         }
     }
   }, [isOpen, existingQuotation, form]);
+
+  useEffect(() => {
+    if (form.formState.isSubmitted) void form.trigger();
+  }, [itemFields.length, vendorFields.length, form]);
 
   const handleImportItems = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -137,16 +151,18 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
             const json: any[] = XLSX.utils.sheet_to_json(sheet);
 
+            const missingDescriptions = json.flatMap((row, index) => String(row.Description ?? row.Item ?? '').trim() ? [] : ['Excel data row ' + (index + 1) + ': Item description is missing. Fill the Description or Item column.']);
+            if (missingDescriptions.length) { showError('Import needs correction', [...missingDescriptions, 'No items were imported; your draft has been retained.']); return; }
             const newItems = json.map((row, idx) => ({
                 id: `import-${Date.now()}-${idx}`,
                 itemId: `import-${Date.now()}-${idx}`,
-                description: String(row.Description || row.Item || ''),
+                description: String(row.Description ?? row.Item ?? '').trim(),
                 uom: String(row.UOM || row.Unit || 'Nos'),
                 itemType: 'Manual'
             })).filter(item => item.description);
 
             if (newItems.length === 0) {
-                toast({ title: "No valid items found", variant: "destructive" });
+                showError("No items imported", ["The first Excel sheet must contain a Description or Item column with at least one item. Use UOM or Unit for units. Your current entries have not been replaced."]);
                 return;
             }
 
@@ -165,16 +181,17 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
             toast({ title: "Items Imported", description: `${newItems.length} items added.` });
         } catch (error) {
-            toast({ title: "Import Failed", variant: "destructive" });
+            showError("Import failed", [error instanceof Error ? error.message : "The workbook could not be read.", "Check that the file is a valid Excel workbook with Description and UOM headers in the first sheet. Your draft has been retained."]);
         }
     };
+    reader.onerror = () => showError("File could not be read", ["Select the Excel file again. Check that it is available on this device and not damaged. Your draft has been retained."]);
     reader.readAsArrayBuffer(file);
     e.target.value = ''; 
   };
 
   const onSubmit = async (data: FormValues) => {
     if (!data.vendors.length || !data.items.length) {
-        toast({ title: "Missing data", description: "Add at least one item and one vendor.", variant: "destructive" });
+        showError("Missing comparison details", ["Add at least one item and one vendor."]);
         return;
     }
     
@@ -182,17 +199,19 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     try {
         let success = false;
         if (isEditMode && existingQuotation) {
-            success = await updateQuotation({ ...existingQuotation, ...data });
+            success = await updateQuotation({ ...existingQuotation, ...data }, error => { throw error; });
         } else {
-            success = await addQuotation(data);
+            success = await addQuotation(data, error => { throw error; });
         }
         
         if (success) {
             setIsOpen(false);
             toast({ title: isEditMode ? "Comparison Updated" : "Comparison Created" });
+        } else {
+            showError("Comparison not saved", ["The database did not confirm the save. No detailed error was returned.", "Your entered data is still here. Check your connection and sign-in, then retry."]);
         }
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: e.message || 'Submission failed' });
+        showError('Comparison not saved', [e?.code ? 'Error code: ' + e.code : 'Save request failed', e?.message || String(e || 'Submission failed'), 'Your draft has been retained. Correct the issue and retry.']);
     } finally {
         setIsSubmitting(false);
     }
@@ -252,20 +271,20 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
   const handleVendorSelect = (vendorIndex: number, vendorId: string) => {
     const vendor = vendors.find(v => v.id === vendorId);
     if(vendor) {
-        setValue(`vendors.${vendorIndex}.vendorId`, vendor.id);
-        setValue(`vendors.${vendorIndex}.name`, vendor.name);
+        setValue(`vendors.${vendorIndex}.vendorId`, vendor.id, { shouldDirty: true, shouldValidate: true });
+        setValue(`vendors.${vendorIndex}.name`, vendor.name, { shouldDirty: true, shouldValidate: true });
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className={`${styles.dialog} ${styles.comparisonDialog}`} onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className={`${styles.dialog} ${styles.comparisonDialog} ${styles.worksheetDialog}`} style={{'--comparison-width': `${Math.max(760, 336 + vendorFields.length * 360)}px`} as CSSProperties} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className={styles.header}>
           <DialogTitle className="text-xl font-bold tracking-tight">{isEditMode ? 'Edit' : 'New'} price comparison</DialogTitle>
-          <DialogDescription className="text-sm font-medium text-muted-foreground mt-0.5">Add the items you need, compare vendor prices, then review and save.</DialogDescription>
+          <DialogDescription className="text-sm font-medium text-muted-foreground mt-0.5">Enter items once. Compare vendor offers in one worksheet.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit, errors => { if (errors.items) setEditorTab('items'); else if (errors.vendors) setEditorTab('vendors'); })} className={styles.form}>
+        <form noValidate onSubmit={form.handleSubmit(onSubmit, errors => showError('Please correct these details', comparisonValidationMessages(errors, getValues())))} className={styles.form}>
           <div className="px-4 sm:px-6 py-3 border-b bg-card">
             <div className="flex flex-wrap justify-between items-end gap-3">
               <div className="flex-1 max-w-xl">
@@ -284,170 +303,36 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             </div>
           </div>
 
-          <Tabs value={editorTab} onValueChange={setEditorTab} className={styles.editorTabs}>
-              <TabsList className={styles.editorTabBar}><TabsTrigger value="items">Items &amp; descriptions ({itemFields.length})</TabsTrigger><TabsTrigger value="vendors">Vendor prices ({vendorFields.length})</TabsTrigger></TabsList>
-              <div className={styles.body}>
-                
-                <TabsContent value="items" className="m-0 border rounded-lg bg-card">
-                  <div className="px-4 py-2 bg-muted/10 border-b">
-                    <div className="flex items-center gap-2">
-                      <ListChecks className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-bold uppercase tracking-wider">1. Requirements List ({itemFields.length})</span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="p-4 space-y-2"><p className={styles.help}>Enter each item once. Import accepts Description and UOM columns in the first Excel sheet; importing replaces the current items and prices.</p>
-                        {itemFields.map((field, index) => (
-                            <div className={styles.requirement} key={field.id}>
-                                <div className="w-8 text-[10px] font-bold text-muted-foreground text-center bg-muted h-8 flex items-center justify-center rounded">{index + 1}</div>
-                                <div><Textarea aria-label={`Item ${index + 1} description`} rows={1} {...form.register(`items.${index}.description`)} ref={node => { form.register(`items.${index}.description`).ref(node); if (node) { node.style.height = "auto"; node.style.height = node.scrollHeight + "px"; } }} onInput={event => { const node = event.currentTarget; node.style.height = "auto"; node.style.height = node.scrollHeight + "px"; }} placeholder="Item description" />{errors.items?.[index]?.description && <p className="text-xs text-destructive">{errors.items[index]?.description?.message}</p>}</div>
-                                <Input aria-label={`Item ${index + 1} unit`} {...form.register(`items.${index}.uom`)} placeholder="UOM" className="h-9 text-sm w-20 text-center" />
-                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-destructive" aria-label={`Remove item ${index + 1}`} onClick={() => handleRemoveItemRow(index)}><Trash2 className="h-4 w-4"/></Button>
-                            </div>
-                        ))}
-                        <Button type="button" variant="outline" className="w-full h-9 border-dashed text-xs font-bold uppercase tracking-wider mt-2" onClick={handleAddItemRow}>
-                            <PlusCircle className="h-3.5 w-3.5 mr-2"/>Add Line Item
-                        </Button>
-                    </div>
-                  </div>
-                </TabsContent>
+          <div className={styles.worksheetToolbar}>
+            <div><strong>Items &amp; vendor prices</strong><span className="ml-3 text-muted-foreground">{itemFields.length} items · {vendorFields.length} vendors</span></div>
+            <div className="flex gap-2"><Button type="button" variant="outline" onClick={handleAddItemRow}><PlusCircle className="h-4 w-4 mr-2"/>Add Line Item</Button><Button type="button" variant="outline" onClick={handleAddVendor}>Add Vendor</Button></div>
+          </div>
+          <div className={styles.worksheetScroll} tabIndex={0} aria-label="Editable price comparison worksheet">
+            <table className={styles.worksheet} style={{width: 300 + vendorFields.length * 360}}>
+              <colgroup><col style={{width:300}}/>{vendorFields.map(v => <col key={v.id} style={{width:360}}/>)}</colgroup>
+              <thead><tr><th className={styles.frozenItem}>Item description / Unit</th>{vendorFields.map((vendorField,vIdx) => <th key={vendorField.id}>
+                <div className="flex items-center gap-2"><div className="flex-1 min-w-0"><Select value={watch(`vendors.${vIdx}.vendorId`)} onValueChange={val => handleVendorSelect(vIdx,val)}><SelectTrigger aria-label={`Vendor ${vIdx+1}`}><SelectValue placeholder="Select vendor…"/></SelectTrigger><SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent></Select></div><Button type="button" size="icon" variant="ghost" aria-label={`Remove vendor ${vIdx+1}`} onClick={() => removeVendor(vIdx)}><X className="h-4 w-4"/></Button></div>
+              </th>)}</tr></thead>
+              <tbody>{itemFields.map((item,iIdx) => <tr key={item.id}>
+                <td className={styles.frozenItem}><div className="flex gap-2 items-start"><span className="text-muted-foreground pt-2">{iIdx+1}.</span><div className="flex-1 min-w-0">
+                  <Controller name={`items.${iIdx}.description`} control={control} render={({field}) => <Textarea {...field} value={field.value ?? ''} aria-label={`Item ${iIdx+1} description`} rows={1} ref={node => { field.ref(node); if(node){node.style.height='auto';node.style.height=node.scrollHeight+'px';} }} onInput={event => {const node=event.currentTarget;node.style.height='auto';node.style.height=node.scrollHeight+'px';}} placeholder="Item description"/>}/>
+                  <div className="flex items-center gap-2 mt-2"><Label htmlFor={`unit-${iIdx}`}>Unit</Label><Input id={`unit-${iIdx}`} aria-label={`Item ${iIdx+1} unit`} {...form.register(`items.${iIdx}.uom`)} placeholder="e.g. Nos" className="max-w-28"/></div>
+                </div><Button type="button" size="icon" variant="ghost" aria-label={`Remove item ${iIdx+1}`} onClick={() => handleRemoveItemRow(iIdx)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div></td>
+                {vendorFields.map((vendorField,vIdx) => <td key={vendorField.id}><div className={styles.priceFields}>{(['quantity','rate','taxPercent'] as const).map(key => <div key={key}><Label className="block text-muted-foreground mb-1">{key==='quantity'?'Qty':key==='rate'?'Rate ₹':'Tax %'}</Label>
+<Controller name={`vendors.${vIdx}.quotes.${iIdx}.${key}`} control={control} render={({field}) => <Input {...field} aria-label={`Vendor ${vIdx+1}, item ${iIdx+1}: ${key}`} type="number" step="any" value={field.value ?? ''} onChange={event => { const raw=event.target.value; field.onChange(raw); if(vIdx===0 && key!=='rate') getValues('vendors').forEach((_,otherIdx) => {if(otherIdx!==0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.${key}`,raw as any,{shouldDirty:true});}); }}/>} /></div>)}
+<QuoteAmount control={control} vendorIndex={vIdx} itemIndex={iIdx}/></div></td>)}
+              </tr>)}</tbody>
+              {vendorFields.length > 0 && <tfoot><tr><th className={styles.frozenItem}>Additional costs</th>{vendorFields.map((v,vIdx) => <td key={v.id}><VendorCostSection vendorIndex={vIdx} control={control}/></td>)}</tr>
+              <tr><th className={styles.frozenItem}>Total including tax</th>{vendorFields.map((v,vIdx) => <td key={v.id}><VendorTotal vendorIndex={vIdx} control={control}/></td>)}</tr></tfoot>}
+            </table>
+            {!itemFields.length && <p className="p-6 text-muted-foreground">Add a line item or import an Excel file to begin.</p>}
+            {!vendorFields.length && <p className="px-6 pb-6 text-muted-foreground">Add a vendor to enter and compare prices.</p>}
+          </div>
+          <p className={styles.worksheetHint}>Quantity and tax entered for the first vendor are copied to the others; you can then adjust each vendor. Excel import uses Description and UOM columns and replaces current items and prices.</p>
 
-                <TabsContent value="vendors" className="m-0 border rounded-lg bg-card">
-                  <div className="px-4 py-2 bg-muted/10 border-b">
-                    <div className="flex items-center gap-2">
-                      <Users2 className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-bold uppercase tracking-wider">2. Comparison Matrix</span>
-                    </div>
-                  </div>
-                  <div>
-                     <p className="p-3 text-sm text-muted-foreground">Quantity and tax entered for the first vendor are copied to the others. You can then adjust each vendor separately.</p>
-                     <div className="w-full overflow-x-auto border-t">
-                        <div className={styles.matrix}>
-                            {/* Sticky Column */}
-                            <div className={styles.itemColumn}>
-                                <div className={styles.vendorHeader}>
-                                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Item Name</span>
-                                </div>
-                                {itemFields.map((item, idx) => (
-                                    <div key={item.id} className={styles.quoteRow}>
-                                        <span className="text-sm leading-relaxed whitespace-normal break-words max-h-full overflow-auto" title={watch(`items.${idx}.description`)}>
-                                            {idx + 1}. {watch(`items.${idx}.description`) || "..."}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Vendor Columns */}
-                            <div className={styles.vendorColumns}>
-                                {vendorFields.map((vendorField, vIdx) => (
-                                    <div key={vendorField.id} className={styles.vendor}>
-                                        <div className={styles.vendorHeader}>
-                                            <div className="flex-1">
-                                                <Select value={watch(`vendors.${vIdx}.vendorId`)} onValueChange={(val) => handleVendorSelect(vIdx, val)}>
-                                                    <SelectTrigger className="text-sm font-medium"><SelectValue placeholder="Select vendor…"/></SelectTrigger>
-                                                    <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
-                                                </Select>
-                                            </div>
-                                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" aria-label={`Remove vendor ${vIdx + 1}`} onClick={() => removeVendor(vIdx)}><X className="h-3.5 w-3.5"/></Button>
-                                        </div>
-
-                                        {itemFields.map((item, iIdx) => (
-                                            <div key={`${vendorField.id}-${iIdx}`} className={styles.quoteRow}>
-                                                <p className={styles.mobileItem}>{iIdx + 1}. {watch(`items.${iIdx}.description`) || "Untitled item"} · {watch(`items.${iIdx}.uom`)}</p>
-                                                <div className="w-16 shrink-0 space-y-1">
-                                                    <Label className="text-[9px] text-muted-foreground font-bold uppercase block text-center">Qty</Label>
-                                                    <Controller
-                                                        name={`vendors.${vIdx}.quotes.${iIdx}.quantity`}
-                                                        control={control}
-                                                        render={({ field }) => (
-                                                            <Input aria-label={`Vendor ${vIdx + 1}, item ${iIdx + 1}: quantity`} 
-                                                                type="number" 
-                                                                step="any"
-                                                                className="h-7 text-xs text-center px-0.5 font-bold"
-                                                                value={field.value ?? ''}
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    const numVal = val === '' ? 0 : Number(val);
-                                                                    field.onChange(numVal);
-                                                                    if (vIdx === 0) {
-                                                                        const currentVendors = getValues('vendors');
-                                                                        currentVendors.forEach((_, otherIdx) => {
-                                                                            if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.quantity`, numVal);
-                                                                        });
-                                                                    }
-                                                                }}
-                                                            />
-                                                        )}
-                                                    />
-                                                </div>
-                                                <div className="flex-1 space-y-1">
-                                                    <Label className="text-[9px] text-muted-foreground font-bold uppercase block text-center">Rate</Label>
-                                                    <Controller
-                                                        name={`vendors.${vIdx}.quotes.${iIdx}.rate`}
-                                                        control={control}
-                                                        render={({ field }) => (
-                                                            <Input aria-label={`Vendor ${vIdx + 1}, item ${iIdx + 1}: rate`} 
-                                                                type="number" 
-                                                                step="any"
-                                                                className="h-7 text-xs text-right font-bold text-primary px-1"
-                                                                value={field.value || ''}
-                                                                onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
-                                                            />
-                                                        )}
-                                                    />
-                                                </div>
-                                                <div className="w-16 shrink-0 space-y-1">
-                                                    <Label className="text-[9px] text-muted-foreground font-bold uppercase block text-center">Tax%</Label>
-                                                    <Controller
-                                                        name={`vendors.${vIdx}.quotes.${iIdx}.taxPercent`}
-                                                        control={control}
-                                                        render={({ field }) => (
-                                                            <Input aria-label={`Vendor ${vIdx + 1}, item ${iIdx + 1}: taxPercent`} 
-                                                                type="number" 
-                                                                step="any"
-                                                                className="h-7 text-xs text-center px-0.5 font-bold"
-                                                                value={field.value ?? ''}
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    const numVal = val === '' ? 0 : Number(val);
-                                                                    field.onChange(numVal);
-                                                                    if (vIdx === 0) {
-                                                                        const currentVendors = getValues('vendors');
-                                                                        currentVendors.forEach((_, otherIdx) => {
-                                                                            if (otherIdx !== 0) setValue(`vendors.${otherIdx}.quotes.${iIdx}.taxPercent`, numVal);
-                                                                        });
-                                                                    }
-                                                                }}
-                                                            />
-                                                        )}
-                                                    />
-                                                </div>
-                                            </div>
-                                        ))}
-                                        
-                                        <VendorCostSection vendorIndex={vIdx} control={control} />
-                                        <VendorTotal vendorIndex={vIdx} control={control} />
-                                    </div>
-                                ))}
-                                
-                                <div className="w-full sm:w-[140px] shrink-0 bg-muted/10 flex items-center justify-center p-3">
-                                    <Button type="button" variant="ghost" className="h-20 w-full flex-col gap-2 rounded-lg border-2 border-dashed" onClick={handleAddVendor}>
-                                        <PlusCircle className="h-5 w-5 text-muted-foreground"/>
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Add Vendor</span>
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                     </div>
-                  </div>
-                </TabsContent>
-              </div>
-          </Tabs>
-          
           <div className={styles.footer}>
-            <div className="text-xs text-destructive font-bold">
-                {Object.keys(errors).length > 0 && <p className="flex items-center gap-1"><AlertTriangle className="h-3 w-3"/> Check the title, item descriptions, units and vendor prices before saving.</p>}
+            <div role="alert" className="text-sm text-destructive max-h-28 overflow-auto min-w-0 flex-1">
+                {comparisonValidationMessages(errors).map(message => <p key={message}>{message}</p>)}
             </div>
             <div className={styles.footerActions}>
                 <Button type="button" variant="outline" className="h-10 px-6" onClick={() => setIsOpen(false)}>Cancel</Button>
@@ -457,6 +342,13 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
             </div>
           </div>
         </form>
+        <Dialog open={!!errorPopup} onOpenChange={open => { if(!open) setErrorPopup(null); }}>
+          <DialogContent className="max-w-xl max-h-[85dvh] flex flex-col" onInteractOutside={e => e.preventDefault()}>
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive"/>{errorPopup?.title}</DialogTitle><DialogDescription>Your entries are retained. Review the details below, then return to the worksheet to correct them.</DialogDescription></DialogHeader>
+            <ul role="alert" className="overflow-auto min-h-0 list-disc pl-5 space-y-3 text-sm break-words">{errorPopup?.messages.map((message,index) => <li key={index}>{message}</li>)}</ul>
+            <Button type="button" onClick={() => setErrorPopup(null)}>Return to comparison</Button>
+          </DialogContent>
+        </Dialog>
         <AddVendorDialog isOpen={isAddVendorOpen} setIsOpen={setIsAddVendorOpen} />
       </DialogContent>
     </Dialog>

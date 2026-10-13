@@ -81,3 +81,40 @@
  .viewScroll { margin:8px; }
  .comparisonDialog .requirement textarea { font-size:16px; }
 }
+
+/* One worksheet keeps descriptions and prices aligned as text wraps. */
+.worksheetToolbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding:12px 20px; border-bottom:1px solid #dbe5f0; background:#f8fafc; }
+.worksheetScroll { flex:1; min-height:0; overflow:auto; margin:12px 16px 0; border:1px solid #dbe5f0; border-radius:8px; -webkit-overflow-scrolling:touch; }
+.worksheet { table-layout:fixed; border-collapse:separate; border-spacing:0; font-size:14px; }
+.worksheet th,.worksheet td { padding:12px; border-right:1px solid #dbe5f0; border-bottom:1px solid #dbe5f0; vertical-align:top; text-align:left; }
+.worksheet thead th { position:sticky; top:0; z-index:2; background:#eef5ff; min-width:360px; }
+.worksheet .frozenItem { min-width:290px; width:290px; position:sticky; left:0; z-index:1; background:#fff; }
+.worksheet thead .frozenItem { z-index:3; background:#eef5ff; }
+.worksheet tbody tr:nth-child(even) td { background:#f5f9ff; }
+.worksheet tfoot th,.worksheet tfoot td { background:#f8fafc; }
+.worksheet textarea { min-height:40px; resize:none; overflow:hidden; width:100%; }
+.priceFields { display:grid; grid-template-columns:65px 160px 65px; gap:10px; min-width:330px; }
+.priceFields > div:last-child { grid-column:1/-1; text-align:right; display:flex; justify-content:space-between; align-items:center; }
+.priceFields > div:last-child p { margin:0; }
+.priceFields input { height:38px!important; font-size:14px!important; }
+.priceFields label { font-size:12px!important; text-transform:none!important; }
+.worksheetHint { padding:10px 20px; font-size:12px; line-height:1.5; color:#64748b; }
+@media(max-width:767px) {
+ .worksheetToolbar { padding:10px 12px; }
+ .worksheetToolbar > div { width:100%; }
+ .worksheetToolbar strong,.worksheetToolbar span { display:block; margin-left:0; }
+ .worksheetScroll { margin:8px 8px 0; }
+ .worksheet .frozenItem { position:static; min-width:240px; width:240px; }
+ .worksheet thead .frozenItem { position:sticky; top:0; }
+ .worksheetHint { padding:8px 12px; }
+ .priceFields input { font-size:16px!important; }
+}
+
+/* Bound the form by its content as well as the viewport. */
+.worksheetDialog { height:auto; max-height:94dvh; max-width:min(1480px,var(--comparison-width,1480px))!important; }
+.worksheetDialog .form { flex:0 1 auto; }
+.worksheetScroll { flex:0 1 auto; min-height:120px; }
+.worksheet .frozenItem { width:300px; min-width:300px; }
+.worksheet tbody td { padding:10px; }
+.worksheet thead th { padding:10px; }
+@media(max-width:767px) { .worksheetDialog { height:auto; max-height:96dvh; } }

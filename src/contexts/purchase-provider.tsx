@@ -38,8 +38,8 @@ export type PurchaseContextType = {
   deletePurchaseRegister: (id: string) => void;
   updatePurchaseRegisterPoNumber: (id: string, poNumber: string) => void;
 
-  addQuotation: (quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>) => Promise<boolean>;
-  updateQuotation: (quotation: Quotation) => Promise<boolean>;
+  addQuotation: (quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>, onError?: (error: unknown) => void) => Promise<boolean>;
+  updateQuotation: (quotation: Quotation, onError?: (error: unknown) => void) => Promise<boolean>;
   deleteQuotation: (quotationId: string) => void;
   setQuotationLock: (quotationId: string, locked: boolean) => void;
   receiveQuoteItem: (quotationId: string, vendorId: string, itemId: string, quantity: number) => void;
@@ -178,8 +178,8 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
     }, []);
 
     // Quotation Functions
-    const addQuotation = useCallback(async (quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>): Promise<boolean> => {
-        if (!user) return false;
+    const addQuotation = useCallback(async (quotationData: Omit<Quotation, 'id' | 'creatorId' | 'createdAt' | 'status'>, onError?: (error: unknown) => void): Promise<boolean> => {
+        if (!user) { onError?.(new Error('Your sign-in session is unavailable. Sign in again before saving this comparison.')); return false; }
         try {
             const newRef = push(ref(rtdb, 'quotations'));
             const newQuotation: Omit<Quotation, 'id'> = {
@@ -193,12 +193,13 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
             return true;
         } catch (error) {
             console.error("Failed to add quotation:", error);
+            onError?.(error);
             return false;
         }
     }, [user, addActivityLog]);
 
-    const updateQuotation = useCallback(async (quotation: Quotation): Promise<boolean> => {
-        if (!user) return false;
+    const updateQuotation = useCallback(async (quotation: Quotation, onError?: (error: unknown) => void): Promise<boolean> => {
+        if (!user) { onError?.(new Error('Your sign-in session is unavailable. Sign in again before saving this comparison.')); return false; }
         try {
             const { id, ...data } = quotation;
             const oldQuotation = quotationsById[id];
@@ -217,6 +218,7 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
             return true;
         } catch (error) {
             console.error("Failed to update quotation:", error);
+            onError?.(error);
             return false;
         }
     }, [quotationsById, user, addActivityLog]);
