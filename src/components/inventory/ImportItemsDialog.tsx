@@ -17,6 +17,7 @@ interface ImportItemsDialogProps {
 export default function ImportItemsDialog({ isOpen, setIsOpen }: ImportItemsDialogProps) {
     const { addMultipleInventoryItems } = useInventory();
     const { toast } = useToast();
+    const [isImporting, setIsImporting] = useState(false);
     const [file, setFile] = useState<File | null>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,8 +32,10 @@ export default function ImportItemsDialog({ isOpen, setIsOpen }: ImportItemsDial
             return;
         }
 
+        if (isImporting) return;
+        setIsImporting(true);
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const data = new Uint8Array(e.target?.result as ArrayBuffer);
                 const workbook = XLSX.read(data, { type: 'array', cellDates: true });
@@ -40,15 +43,18 @@ export default function ImportItemsDialog({ isOpen, setIsOpen }: ImportItemsDial
                 const worksheet = workbook.Sheets[sheetName];
                 const json: any[] = XLSX.utils.sheet_to_json(worksheet);
                 
-                const importedCount = addMultipleInventoryItems(json);
+                const importedCount = await addMultipleInventoryItems(json);
 
-                toast({ title: 'Import Complete', description: `${importedCount} new items were successfully added. Existing items were ignored.` });
+                toast({ title: 'Import Complete', description: `${importedCount} new items were successfully added to their project/location. Existing items were ignored.` });
                 setIsOpen(false);
             } catch (error) {
                 console.error("Import error:", error);
-                toast({ variant: 'destructive', title: 'Import Failed', description: 'The file format is invalid. Please check the console for details.' });
+                toast({ variant: 'destructive', title: 'Import Failed', description: error instanceof Error ? error.message : 'The import could not be completed. Please check the file and your connection, then retry.' });
+            } finally {
+                setIsImporting(false);
             }
         };
+        reader.onerror = () => { setIsImporting(false); toast({ variant: 'destructive', title: 'File could not be read', description: 'Please select an accessible Excel file and retry.' }); };
         reader.readAsArrayBuffer(file);
     };
 
@@ -58,7 +64,7 @@ export default function ImportItemsDialog({ isOpen, setIsOpen }: ImportItemsDial
             <DialogHeader>
                 <DialogTitle>Import Items from Excel</DialogTitle>
                 <DialogDescription>
-                    Upload an Excel file to add additional items in bulk. Items with existing serial numbers will be ignored.
+                    Upload an Excel file to add additional items in bulk. Items use the Excel PROJECT name; a blank PROJECT defaults to Store. Items with existing serial numbers will be ignored.
                 </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -76,7 +82,7 @@ export default function ImportItemsDialog({ isOpen, setIsOpen }: ImportItemsDial
                             <li><b>INSPECTION DUE DATE</b> (Format: YYYY-MM-DD)</li>
                             <li><b>TP INSPECTION DUE DATE</b> (Format: YYYY-MM-DD)</li>
                             <li><b>STATUS</b> (In Use, In Store, Damaged, Expired)</li>
-                            <li><b>PROJECT</b> (Exact name, e.g., "Aries I", "Aries II")</li>
+                            <li><b>PROJECT</b> (Optional; existing project/location name. Leave blank for Store. Matching ignores case and surrounding spaces.)</li>
                             <li><b>TP Certificate Link</b> (Optional)</li>
                             <li><b>Inspection Certificate Link</b> (Optional)</li>
                         </ul>
@@ -86,7 +92,7 @@ export default function ImportItemsDialog({ isOpen, setIsOpen }: ImportItemsDial
             </div>
             <DialogFooter>
             <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-            <Button onClick={handleImport} disabled={!file}><Upload className="mr-2 h-4 w-4"/> Import</Button>
+            <Button onClick={handleImport} disabled={!file || isImporting}><Upload className="mr-2 h-4 w-4"/> {isImporting ? 'Importing…' : 'Import'}</Button>
             </DialogFooter>
         </DialogContent>
         </Dialog>

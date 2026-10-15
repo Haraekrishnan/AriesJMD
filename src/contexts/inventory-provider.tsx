@@ -127,7 +127,7 @@ type InventoryContextType = {
   deliveryNotes: DeliveryNote[];
 
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'lastUpdated'>) => void;
-  addMultipleInventoryItems: (items: any[]) => number;
+  addMultipleInventoryItems: (items: any[]) => Promise<number>;
   batchAddInventoryItems: (items: Omit<InventoryItem, 'id' | 'lastUpdated'>[]) => void;
   updateInventoryItem: (item: InventoryItem) => void;
   batchUpdateInventoryItems: (updates: { id: string; data: Partial<InventoryItem> }[]) => void;
@@ -516,11 +516,24 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         }
     }, [user, addActivityLog]);
 
-    const addMultipleInventoryItems = useCallback((itemsData: any[]): number => {
+    const addMultipleInventoryItems = useCallback(async (itemsData: any[]): Promise<number> => {
+        const storeProject = projects.find(p => p.name.trim().toLowerCase() === 'store');
+        // Validate destinations before writing any items. Blank PROJECT defaults to Store.
+        const destinations = itemsData.map((row, index) => {
+            if (!row['SERIAL NUMBER'] || inventoryItems.some(i => i.serialNumber === row['SERIAL NUMBER'])) return null;
+            const projectName = String(row['PROJECT'] ?? '').trim();
+            const project = projectName
+                ? projects.find(p => p.name.trim().toLowerCase() === projectName.toLowerCase())
+                : storeProject;
+            if (!project) throw new Error(projectName
+                ? `Excel row ${index + 2}: Project/location "${projectName}" was not found. Correct the PROJECT name or leave it blank to use Store. No items have been imported.`
+                : `Excel row ${index + 2}: PROJECT is blank, but Store was not found. Configure Store or specify an existing project. No items have been imported.`);
+            return project.id;
+        });
         let importedCount = 0;
         const updates: { [key: string]: any } = {};
 
-        itemsData.forEach(row => {
+        itemsData.forEach((row, rowIndex) => {
             const serialNumber = row['SERIAL NUMBER'];
             if (!serialNumber) return;
 
@@ -545,7 +558,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
                 inspectionDueDate: parseDateExcel(row['INSPECTION DUE DATE']),
                 tpInspectionDueDate: parseDateExcel(row['TP INSPECTION DUE DATE']),
                 status: row['STATUS'] || 'In Store',
-                projectId: projects.find(p => p.name === row['PROJECT'])?.id || projects[0].id,
+                projectId: destinations[rowIndex]!,
                 certificateUrl: row['TP Certificate Link'] || '',
                 inspectionCertificateUrl: row['Inspection Certificate Link'] || '',
                 lastUpdated: new Date().toISOString()
@@ -557,7 +570,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         });
 
         if(Object.keys(updates).length > 0) {
-            update(ref(rtdb), updates);
+            await update(ref(rtdb), updates);
         }
         return importedCount;
     }, [inventoryItems, projects]);
