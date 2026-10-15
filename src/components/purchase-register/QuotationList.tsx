@@ -50,7 +50,7 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
     const { toast } = useToast();
 
     const handleExport = (quotation: Quotation) => {
-        exportToExcel(quotation);
+        void exportToExcel(quotation).catch(error => toast({variant:'destructive',title:'Export failed',description:error.message}));
     };
 
     const handleStatusChange = (quotation: Quotation, newStatus: QuotationStatus) => {
@@ -109,7 +109,7 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
                                 <TableRow key={q.id}>
                                     <TableCell>{(currentPage - 1) * 8 + index + 1}</TableCell>
                                     <TableCell className="font-medium whitespace-normal break-words">{q.title}</TableCell>
-                                    <TableCell><span className="inline-flex items-center gap-2" title={q.id}>…{q.id.slice(-6)} {q.isLocked && <Lock aria-label="Locked" className="h-3.5 w-3.5 text-amber-600" />}</span></TableCell>
+                                    <TableCell><span className="inline-flex items-center gap-2" title={q.requestNumber || 'Number allocation pending'}>{q.requestNumber || 'Assigning…'} {q.isLocked && <Lock aria-label="Locked" className="h-3.5 w-3.5 text-amber-600" />}</span></TableCell>
                                     <TableCell>{creator?.name || "Unknown"}</TableCell>
                                     <TableCell><span className="whitespace-nowrap">{format(parseISO(q.createdAt), "dd MMM yyyy")}</span><span className="block text-xs text-muted-foreground mt-1">{format(parseISO(q.createdAt), "p")}</span></TableCell>
                                     <TableCell>

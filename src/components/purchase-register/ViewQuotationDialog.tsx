@@ -163,7 +163,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
         <DialogHeader className={styles.header}>
           <DialogTitle>{quotation.title}</DialogTitle>
           <DialogDescription>
-            Created by {creator?.name || 'Unknown'} on {format(parseISO(quotation.createdAt), 'PPP')}
+            Request No: {quotation.requestNumber || 'Assigning…'} · Created by {creator?.name || 'Unknown'} on {format(parseISO(quotation.createdAt), 'PPP')}
           </DialogDescription>
         </DialogHeader>
 

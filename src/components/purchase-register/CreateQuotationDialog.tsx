@@ -281,7 +281,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
       <DialogContent className={`${styles.dialog} ${styles.comparisonDialog} ${styles.worksheetDialog}`} style={{'--comparison-width': `${Math.max(760, 336 + vendorFields.length * 360)}px`} as CSSProperties} onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className={styles.header}>
           <DialogTitle className="text-xl font-bold tracking-tight">{isEditMode ? 'Edit' : 'New'} price comparison</DialogTitle>
-          <DialogDescription className="text-sm font-medium text-muted-foreground mt-0.5">Enter items once. Compare vendor offers in one worksheet.</DialogDescription>
+          <DialogDescription className="text-sm font-medium text-muted-foreground mt-0.5">{existingQuotation?.requestNumber && <>Request No: {existingQuotation.requestNumber} · </>}Enter items once. Compare vendor offers in one worksheet.</DialogDescription>
         </DialogHeader>
 
         <form noValidate onSubmit={form.handleSubmit(onSubmit, errors => showError('Please correct these details', comparisonValidationMessages(errors, getValues())))} className={styles.form}>

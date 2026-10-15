@@ -1,9 +1,10 @@
 'use client';
 
+import { allocateQuotationNumbers } from '@/components/purchase-register/quotation-numbering';
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
 import { Vendor, Payment, PaymentStatus, PurchaseRegister, Comment, Quotation, InwardOutwardRecord, Permission, QuotationStatus, InventoryItem, OtherEquipment, PpeInwardRecord } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, remove, update, get } from 'firebase/database';
+import { ref, onValue, set, push, remove, update, get, runTransaction } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { useToast } from '@/hooks/use-toast';
 
@@ -82,7 +83,26 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
     const vendors = useMemo(() => Object.values(vendorsById), [vendorsById]);
     const payments = useMemo(() => Object.values(paymentsById), [paymentsById]);
     const purchaseRegisters = useMemo(() => Object.values(purchaseRegistersById), [purchaseRegistersById]);
-    const quotations = useMemo(() => Object.values(quotationsById), [quotationsById]);
+    const [requestNumbers, setRequestNumbers] = useState<Record<string,string>>({});
+    const quotations = useMemo(() => Object.values(quotationsById).map(q => ({...q, requestNumber: requestNumbers[q.id]})), [quotationsById, requestNumbers]);
+
+    const ensureRequestNumbers = useCallback(async (additional?: {id:string;createdAt:string}) => {
+        const existing = (await get(ref(rtdb, 'quotations'))).val() || {};
+        const records = Object.entries(existing).map(([id, value]) => ({id, createdAt:(value as Quotation).createdAt}));
+        if (additional) records.push(additional);
+        const result = await runTransaction(ref(rtdb, 'quotationNumbering'), current => allocateQuotationNumbers(current, records), {applyLocally:false});
+        if (!result.committed) throw new Error('Request number could not be allocated. Please retry.');
+        return result.snapshot.val().byId as Record<string,string>;
+    }, []);
+
+    useEffect(() => onValue(ref(rtdb, 'quotationNumbering/byId'), snapshot => setRequestNumbers(snapshot.val() || {})), []);
+    useEffect(() => {
+        if (!user || !(user.role === 'Admin' || authCan.manage_purchase_register) || !Object.keys(quotationsById).length) return;
+        // Backfill all historical records together, oldest first. Existing allocations never change.
+        if (Object.keys(quotationsById).some(id => !requestNumbers[id])) {
+            void ensureRequestNumbers().catch(error => toast({variant:'destructive',title:'Request numbering failed',description:error.message}));
+        }
+    }, [quotationsById, requestNumbers, user, authCan.manage_purchase_register, ensureRequestNumbers, toast]);
     
     const pendingPaymentApprovalCount = useMemo(() => {
         if (!user || (user.role !== 'Admin' && user.role !== 'Manager')) return 0;
@@ -188,6 +208,7 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
                 createdAt: new Date().toISOString(),
                 status: 'Pending',
             };
+            await ensureRequestNumbers({id:newRef.key!,createdAt:newQuotation.createdAt});
             await set(newRef, sanitizeData(newQuotation));
             addActivityLog(user.id, 'Price Comparison Created', `Title: ${quotationData.title}`);
             return true;
@@ -196,12 +217,12 @@ export function PurchaseProvider({ children }: { children: ReactNode }) {
             onError?.(error);
             return false;
         }
-    }, [user, addActivityLog]);
+    }, [user, addActivityLog, ensureRequestNumbers]);
 
     const updateQuotation = useCallback(async (quotation: Quotation, onError?: (error: unknown) => void): Promise<boolean> => {
         if (!user) { onError?.(new Error('Your sign-in session is unavailable. Sign in again before saving this comparison.')); return false; }
         try {
-            const { id, ...data } = quotation;
+            const { id, requestNumber: _requestNumber, ...data } = quotation;
             const oldQuotation = quotationsById[id];
             
             const updateData: Partial<Quotation> = { ...data };

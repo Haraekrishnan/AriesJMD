@@ -128,7 +128,7 @@ export default function PurchasesPage() {
             if (!dateMatch) return false;
 
             const search = itemNameSearch.trim().toLowerCase();
-            if (search && !q.title.toLowerCase().includes(search) && !q.items?.some(item => item.description.toLowerCase().includes(search))) return false;
+            if (search && !q.requestNumber?.includes(search) && !q.title.toLowerCase().includes(search) && !q.items?.some(item => item.description.toLowerCase().includes(search))) return false;
             if (selectedCategory !== 'all' && !q.items?.some(item => item.itemType === selectedCategory || item.newItemCategory === selectedCategory)) return false;
 
             return true;
@@ -211,7 +211,7 @@ export default function PurchasesPage() {
                         <div className="space-y-2">
                             <Label htmlFor="purchase-search">Search</Label>
                             <Input 
-                                id="purchase-search" placeholder="Search requirement or item..." 
+                                id="purchase-search" placeholder="Search request no, requirement or item..." 
                                 value={itemNameSearch}
                                 onChange={e => setItemNameSearch(e.target.value)}
                             />

@@ -4,6 +4,7 @@ import { saveAs } from 'file-saver';
 import type { Quotation, QuotationQuote } from '@/lib/types';
 
 export const exportToExcel = async (quotation: Quotation) => {
+    if (!quotation.requestNumber) throw new Error('Request number is still being assigned. Please retry the export shortly.');
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Price Comparison");
 
@@ -14,7 +15,7 @@ export const exportToExcel = async (quotation: Quotation) => {
 
     worksheet.mergeCells(1, 1, 1, totalColumns);
     const title = worksheet.getCell('A1');
-    title.value = `PRICE COMPARISON - ${quotation.title.toUpperCase()}`;
+    title.value = `PRICE COMPARISON ${quotation.requestNumber} - ${quotation.title.toUpperCase()}`;
     title.font = { bold: true, size: 14 };
     title.alignment = { horizontal: 'center' };
 
@@ -141,5 +142,5 @@ export const exportToExcel = async (quotation: Quotation) => {
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `${quotation.title.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
+    saveAs(new Blob([buffer]), `${quotation.requestNumber}.xlsx`);
 };

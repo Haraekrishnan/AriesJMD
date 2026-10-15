@@ -1321,6 +1321,7 @@ export type QuotationStatus = 'Pending' | 'Approved' | 'PO Sent' | 'Partially Re
 
 export type Quotation = {
     id: string;
+    requestNumber?: string;
     title: string;
     creatorId: string;
     createdAt: string; // ISO
