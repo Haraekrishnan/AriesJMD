@@ -23,17 +23,5 @@ export default function VehicleUsageSummaryPage() {
         );
     }
     
-    return (
-        <div className="h-[calc(100vh-10rem)] flex flex-col space-y-4">
-             <div>
-                <h1 className="text-3xl font-bold tracking-tight">Vehicle Usage Summary</h1>
-                <p className="text-muted-foreground">
-                    Track monthly vehicle usage, kilometers, and overtime.
-                </p>
-            </div>
-            <div className="flex-1 min-h-0">
-                <VehicleUsageSheet />
-            </div>
-        </div>
-    );
+    return <VehicleUsageSheet />;
 }
