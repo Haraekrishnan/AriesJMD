@@ -1,6 +1,7 @@
 'use client';
-import styles from './purchase-entry.module.css';
-import { useMemo, useState } from 'react';
+import styles from './comparison-view.module.css';
+import { exportToExcel } from './exportQuotationToExcel';
+import { useMemo, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -23,6 +24,7 @@ interface ViewQuotationDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   quotation: Quotation;
+  onEdit?: (quotation: Quotation) => void;
 }
 
 const formatCurrency = (amount: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount);
@@ -87,10 +89,14 @@ const ReceiveItemDialog = ({
     );
 };
 
-export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: initialQuotation }: ViewQuotationDialogProps) {
-  const { users, can } = useAuth();
+export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: initialQuotation, onEdit }: ViewQuotationDialogProps) {
+  const { users, can, user } = useAuth();
   const { quotations, updateQuotation, receiveQuoteItem } = usePurchase();
   const { toast } = useToast();
+  const [search, setSearch] = useState('');
+  const [frame, setFrame] = useState({left:12,top:12});
+  const [exporting, setExporting] = useState(false);
+  useEffect(()=>{if(!isOpen || typeof window==='undefined')return; const measure=()=>{const nav=document.querySelector('.portal-navigation')?.getBoundingClientRect();const header=document.querySelector('.main-portal header')?.getBoundingClientRect();setFrame({left:nav && window.innerWidth>=1024?nav.right+12:12,top:header && window.innerWidth>=768?header.bottom+12:12});};measure();window.addEventListener('resize',measure);return()=>window.removeEventListener('resize',measure);},[isOpen]);
   const [poNumber, setPoNumber] = useState(initialQuotation.poNumber || '');
   const [receivingInfo, setReceivingInfo] = useState<{ item: QuotationItem; vendor: QuotationVendorDetails; quote: QuotationQuote } | null>(null);
 
@@ -98,6 +104,15 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
     return quotations.find((q: Quotation) => q.id === initialQuotation.id) || initialQuotation;
   }, [quotations, initialQuotation]);
   
+  useEffect(()=>{setSearch('');setReceivingInfo(null);},[initialQuotation.id,isOpen]);
+  useEffect(()=>setPoNumber(quotation.poNumber || ''),[quotation.id,quotation.poNumber]);
+  const quoteMaps=useMemo(()=>quotation.vendors.map(v=>new Map<string,QuotationQuote>(((Array.isArray(v.quotes)?v.quotes:Object.values(v.quotes || {})) as QuotationQuote[]).map(q=>[String(q.itemId),q]))),[quotation.vendors]);
+  const commonQuantity=quotation.vendors.length>0 && quotation.items.every(item=>{const first=quoteMaps[0]?.get(String(item.itemId));return !!first && quoteMaps.every(m=>{const q=m.get(String(item.itemId));return !!q && Number(q.quantity)===Number(first.quantity);});});
+  const span=(vendorId:string)=>(commonQuantity?3:4)+(quotation.finalizedVendorId===vendorId?2:0);
+  const leftSpan=commonQuantity?4:3;
+  const columnWidths=[38,290,65,...(commonQuantity?[65]:[]),...quotation.vendors.flatMap(v=>[...(commonQuantity?[]:[65]),95,60,120,...(quotation.finalizedVendorId===v.vendorId?[100,95]:[])])];
+  const visibleItems=quotation.items.map((item,index)=>({item,index})).filter(({item})=>!search || `${item.description} ${item.uom}`.toLowerCase().includes(search.toLowerCase()));
+  const handleExport=async()=>{setExporting(true);try{await exportToExcel(quotation);}catch(error){toast({variant:'destructive',title:'Export failed',description:error instanceof Error?error.message:String(error)});}finally{setExporting(false);}};
   const creator = users.find(u => u.id === quotation.creatorId);
   const canFinalize = can.manage_purchase_register;
 
@@ -105,7 +120,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
     return quotation.vendors.map(vendor => {
         let subTotal = 0;
         let totalTax = 0;
-        const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
+        const quotesArray: QuotationQuote[] = (Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {})) as QuotationQuote[];
 
         quotation.items.forEach((item) => {
             const quote = quotesArray.find(q => String(q.itemId) === String(item.itemId));
@@ -159,11 +174,11 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
   return (
     <>
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className={`${styles.dialog} ${styles.comparisonDialog}`}>
+      <DialogContent className={styles.dialog} overlayClassName="bg-black/20" style={{'--view-left':`${frame.left}px`,'--view-top':`${frame.top}px`} as React.CSSProperties}>
         <DialogHeader className={styles.header}>
-          <DialogTitle>{quotation.title}</DialogTitle>
+          <DialogTitle>{quotation.title} <span className={styles.request}>{quotation.requestNumber || 'Assigning…'}</span></DialogTitle>
           <DialogDescription>
-            Request No: {quotation.requestNumber || 'Assigning…'} · Created by {creator?.name || 'Unknown'} on {format(parseISO(quotation.createdAt), 'PPP')}
+            Created by {creator?.name || 'Unknown'} on {format(parseISO(quotation.createdAt), 'PPP')}
           </DialogDescription>
         </DialogHeader>
 
@@ -177,6 +192,8 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                     </SelectContent>
                 </Select>
             </div>
+            <Input aria-label="Find comparison item" placeholder="Find item by description or unit…" value={search} onChange={e=>setSearch(e.target.value)} className={styles.search}/>
+            <div className={styles.actions}><Button variant="outline" disabled={exporting} onClick={handleExport}>{exporting?'Exporting…':'Excel'}</Button>{onEdit && canFinalize && (!quotation.isLocked || user?.role==='Admin') && <Button variant="outline" onClick={()=>{setIsOpen(false);onEdit(quotation);}}>Edit comparison</Button>}</div>
             {(quotation.status === 'PO Sent' || quotation.status === 'Partially Received' || quotation.status === 'Completed') && (
                 <div className="flex flex-wrap items-center gap-2">
                     <Label htmlFor="poNumber">PO Number:</Label>
@@ -186,15 +203,17 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
             )}
         </div>
 
-        <div className={styles.viewScroll}>
-          <table className={styles.viewTable}>
+        <p className={styles.note}>Amounts before tax · Grand totals include tax and additional costs{!commonQuantity && ' · Quantities shown separately for each vendor'}</p>
+        <div className={styles.viewScroll} role="region" aria-label="Price comparison table" tabIndex={0}>
+          <table className={styles.viewTable} style={{minWidth:columnWidths.reduce((a,b)=>a+b,0)}}>
+            <colgroup>{columnWidths.map((width,i)=><col key={i} style={{width}}/>)}</colgroup>
             <TableHeader className="sticky top-0 bg-background z-10">
               <TableRow>
-                 <TableHead colSpan={3} className="p-2 text-center font-semibold border-x">
+                 <TableHead colSpan={leftSpan} className="p-2 text-center font-semibold border-x">
                     Item Details
                  </TableHead>
                 {quotation.vendors.map(vendor => (
-                  <TableHead key={vendor.id} colSpan={quotation.finalizedVendorId === vendor.vendorId ? 6 : 4} className="text-center font-semibold border-x p-2">
+                  <TableHead key={vendor.id} colSpan={span(vendor.vendorId)} className="text-center font-semibold border-x p-2">
                     {vendor.name}
                   </TableHead>
                 ))}
@@ -202,10 +221,10 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
               <TableRow>
                 <TableHead className="w-[40px]">Sl.</TableHead>
                 <TableHead className="min-w-[200px]">Description</TableHead>
-                <TableHead className="w-[60px]">UOM</TableHead>
+                <TableHead className="w-[60px]">Unit</TableHead>{commonQuantity && <TableHead>Qty</TableHead>}
                 {quotation.vendors.map(vendor => (
                   <React.Fragment key={vendor.id}>
-                    <TableHead className="text-center w-[80px] border-l">Qty</TableHead>
+                    {!commonQuantity && <TableHead className="text-center w-[80px] border-l">Qty</TableHead>}
                     <TableHead className="text-center w-[100px]">Rate</TableHead>
                     <TableHead className="text-center w-[80px]">Tax %</TableHead>
                     <TableHead className="text-right w-[120px] border-r">Amount</TableHead>
@@ -220,19 +239,18 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
               </TableRow>
             </TableHeader>
             <TableBody>
-              {quotation.items.map((item, itemIndex) => (
+              {visibleItems.map(({item, index:itemIndex}) => (
                 <TableRow key={item.id}>
                   <TableCell>{itemIndex + 1}</TableCell>
                   <TableCell className="font-medium">{item.description}</TableCell>
-                  <TableCell>{item.uom}</TableCell>
-                  {quotation.vendors.map((vendor) => {
-                    const quotesArray = Array.isArray(vendor.quotes) ? vendor.quotes : Object.values(vendor.quotes || {});
-                    const quote = quotesArray.find(q => String(q.itemId) === String(item.itemId));
+                  <TableCell>{item.uom}</TableCell>{commonQuantity && <TableCell>{quoteMaps[0]?.get(String(item.itemId))?.quantity}</TableCell>}
+                  {quotation.vendors.map((vendor, vendorIndex) => {
+                    const quote = quoteMaps[vendorIndex].get(String(item.itemId));
                     const amount = (quote?.quantity || 0) * (quote?.rate || 0);
 
                     return (
                       <React.Fragment key={vendor.id}>
-                        <TableCell className="text-center border-l">{quote?.quantity || 0}</TableCell>
+                        {!commonQuantity && <TableCell className="text-center border-l">{quote?.quantity ?? '—'}</TableCell>}
                         <TableCell className="text-right">{formatCurrency(quote?.rate || 0)}</TableCell>
                         <TableCell className="text-center">{quote?.taxPercent || 0}%</TableCell>
                         <TableCell className="text-right font-semibold border-r">{formatCurrency(amount)}</TableCell>
@@ -253,31 +271,23 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                   })}
                 </TableRow>
               ))}
+              {!visibleItems.length && <TableRow><TableCell colSpan={columnWidths.length}>No matching items. Clear the search to see all items.</TableCell></TableRow>}
+            </TableBody>
+            <tfoot>
               <TableRow className="font-bold bg-muted/50">
-                  <TableCell colSpan={3} className="text-right">Sub-Total</TableCell>
-                  {calculatedTotals.map((total, i) => <TableCell key={i} colSpan={quotation.finalizedVendorId === total.vendorId ? 6 : 4} className="text-right border-x">{formatCurrency(total.subTotal)}</TableCell>)}
+                  <TableCell colSpan={leftSpan} className="text-right">Sub-Total</TableCell>
+                  {calculatedTotals.map((total, i) => <TableCell key={i} colSpan={span(total.vendorId)} className="text-right border-x">{formatCurrency(total.subTotal)}</TableCell>)}
               </TableRow>
-              {
-                Array.from(new Set(calculatedTotals.flatMap(t => t.additionalCosts.map(c => c.name)))).map(costName => (
-                  <TableRow key={costName}>
-                      <TableCell colSpan={3} className="text-right">{costName}</TableCell>
-                      {calculatedTotals.map((total, vendorIndex) => {
-                          const cost = total.additionalCosts.find(c => c.name === costName);
-                          return (
-                            <TableCell key={vendorIndex} colSpan={quotation.finalizedVendorId === total.vendorId ? 6 : 4} className="text-right border-x">{formatCurrency(cost?.value || 0)}</TableCell>
-                          )
-                      })}
-                  </TableRow>
-                ))
-              }
+
                <TableRow className="font-bold">
-                  <TableCell colSpan={3} className="text-right">Total Tax</TableCell>
-                  {calculatedTotals.map((total, i) => <TableCell key={i} colSpan={quotation.finalizedVendorId === total.vendorId ? 6 : 4} className="text-right border-x">{formatCurrency(total.totalTax)}</TableCell>)}
+                  <TableCell colSpan={leftSpan} className="text-right">Total Tax</TableCell>
+                  {calculatedTotals.map((total, i) => <TableCell key={i} colSpan={span(total.vendorId)} className="text-right border-x">{formatCurrency(total.totalTax)}</TableCell>)}
               </TableRow>
+              <TableRow><TableCell colSpan={leftSpan}>Additional costs</TableCell>{calculatedTotals.map((total,i)=><TableCell key={i} colSpan={span(total.vendorId)} className="text-right"><details><summary>{formatCurrency(total.additionalCosts.reduce((sum,c)=>sum+c.value,0))}</summary><div className={styles.costBreakdown}>{total.additionalCosts.length?total.additionalCosts.map((cost,j)=><div key={j}>{cost.name}: {formatCurrency(cost.value)}</div>):'No additional costs'}</div></details></TableCell>)}</TableRow>
                <TableRow className="font-bold text-base bg-muted/50">
-                  <TableCell colSpan={3} className="text-right">Grand Total</TableCell>
+                  <TableCell colSpan={leftSpan} className="text-right">Grand Total</TableCell>
                   {calculatedTotals.map((total, i) => (
-                    <TableCell key={i} colSpan={quotation.finalizedVendorId === total.vendorId ? 6 : 4} className={cn("text-right border-x", total.vendorId === l1VendorId && !quotation.finalizedVendorId && "bg-green-100 dark:bg-green-900/50", quotation.finalizedVendorId === total.vendorId && "bg-green-100 dark:bg-green-900/50")}>
+                    <TableCell key={i} colSpan={span(total.vendorId)} data-highlight={quotation.finalizedVendorId===total.vendorId || (!quotation.finalizedVendorId && total.vendorId===l1VendorId)} className={cn("text-right border-x", total.vendorId === l1VendorId && !quotation.finalizedVendorId && "bg-green-100 dark:bg-green-900/50", quotation.finalizedVendorId === total.vendorId && "bg-green-100 dark:bg-green-900/50")}>
                         <div className="flex items-center justify-end gap-2 p-2">
                            {total.vendorId === l1VendorId && !quotation.finalizedVendorId && (
                                <TooltipProvider>
@@ -315,10 +325,11 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
                     </TableCell>
                   ))}
               </TableRow>
-            </TableBody>
+            </tfoot>
           </table>
         </div>
-        <DialogFooter>
+        <DialogFooter className={styles.footer}>
+          <span>{search ? `${visibleItems.length} of ` : ''}{quotation.items.length} items · {quotation.vendors.length} vendors{search && ' · Totals include all items'}</span>
           <Button onClick={() => setIsOpen(false)}>Close</Button>
         </DialogFooter>
       </DialogContent>

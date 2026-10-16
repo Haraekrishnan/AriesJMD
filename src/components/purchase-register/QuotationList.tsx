@@ -154,7 +154,7 @@ export default function QuotationList({ quotations, onEdit }: { quotations: Quot
             <div className={styles.pagination}><span>Showing {(currentPage - 1) * 8 + 1}–{Math.min(currentPage * 8, quotations.length)} of {quotations.length} comparisons</span><div className="flex gap-2 items-center"><Button variant="outline" size="icon" aria-label="Previous page" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}><ChevronLeft className="h-4 w-4"/></Button><span className="text-sm">{currentPage} / {pageCount}</span><Button variant="outline" size="icon" aria-label="Next page" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}><ChevronRight className="h-4 w-4"/></Button></div></div>
             <AlertDialog open={!!deletingQuotation} onOpenChange={open => { if (!open) setDeletingQuotation(null); }}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete comparison?</AlertDialogTitle><AlertDialogDescription>This will permanently delete “{deletingQuotation?.title}”. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { if (deletingQuotation && user?.role === 'Admin') handleDelete(deletingQuotation.id); setDeletingQuotation(null); }}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
             {viewingQuotation && (
-                <ViewQuotationDialog
+                <ViewQuotationDialog onEdit={onEdit}
                     isOpen={!!viewingQuotation}
                     setIsOpen={() => setViewingQuotation(null)}
                     quotation={viewingQuotation}
