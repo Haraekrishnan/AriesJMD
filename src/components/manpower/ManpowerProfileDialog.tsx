@@ -1,4 +1,5 @@
 'use client';
+import styles from './manpower-profile.module.css';
 import { useEffect, useMemo, useState, useRef, MouseEvent } from 'react';
 import { useForm, Controller, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -176,6 +177,14 @@ const getInitialDocs = (profileData?: ManpowerProfile) => {
 export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: ManpowerProfileDialogProps) {
   const { user, users, projects, addManpowerProfile, updateManpowerProfile, deleteLeaveRecord, manpowerProfiles, deleteMemoRecord, addPpeHistoryRecord, deletePpeHistoryRecord, deleteLogbookRecord, can } = useAppContext();
   const { toast } = useToast();
+  const [section,setSection]=useState('profile');
+  const [frame,setFrame]=useState({left:12,top:12});
+  const [validationMessages,setValidationMessages]=useState<string[]>([]);
+  const contentRef=useRef<HTMLDivElement>(null);
+  useEffect(()=>{if(!isOpen || typeof window==='undefined')return;const measure=()=>{const nav=document.querySelector('.portal-navigation')?.getBoundingClientRect();const header=document.querySelector('.main-portal header')?.getBoundingClientRect();setFrame({left:nav && window.innerWidth>=1024?nav.right+12:12,top:header && window.innerWidth>=768?header.bottom+12:12});};measure();window.addEventListener('resize',measure);return()=>window.removeEventListener('resize',measure);},[isOpen]);
+  useEffect(()=>{setSection('profile');setValidationMessages([]);},[isOpen,profile?.id]);
+  const navigate=(value:string)=>{setSection(value);if(contentRef.current)contentRef.current.scrollTop=0;};
+  const showValidation=(errors:any)=>{const messages:string[]=[];const visit=(node:any,path:string)=>{if(!node || typeof node!=='object')return;if(typeof node.message==='string')messages.push(path+': '+node.message);Object.entries(node).forEach(([key,value])=>{if(!['ref','message','type','types'].includes(key))visit(value,path?path+'.'+key:key);});};visit(errors,'');setValidationMessages(messages);const first=messages[0]||'';navigate(first.startsWith('skills')?'skills':/^(currentLeave|resignationDate|terminationDate|feedback)/.test(first)?'status':'profile');};
   const [editingMemo, setEditingMemo] = useState<MemoRecord | null>(null);
   const [editingPpeRecord, setEditingPpeRecord] = useState<PpeHistoryRecord | null>(null);
   const [isAddPpeOpen, setIsAddPpeOpen] = useState(false);
@@ -208,6 +217,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
+    shouldUnregister: false,
   });
   
   const { fields: documentFields, append: appendDocument, remove: removeDocument } = useFieldArray({
@@ -512,13 +522,29 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-4xl h-full max-h-[95vh] flex flex-col">
-          <DialogHeader><DialogTitle>{profile ? `Edit Profile: ${profile.name}` : 'Add New Manpower Profile'}</DialogTitle></DialogHeader>
-          <form onSubmit={form.handleSubmit(onSubmit, (errors) => console.log("Form validation errors:", errors))} className="flex-1 overflow-hidden flex flex-col">
-            <ScrollArea className="flex-1 pr-4 -mr-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-4 py-4">
+        <DialogContent className={styles.dialog} overlayClassName="bg-black/20" style={{'--profile-left':frame.left+'px','--profile-top':frame.top+'px'} as React.CSSProperties}>
+          <DialogHeader className={styles.header}><DialogTitle>{profile ? `Edit Profile: ${profile.name}` : 'New manpower profile'}</DialogTitle><DialogDescription>Personal, employment and compliance details in one workspace.</DialogDescription></DialogHeader>
+          <nav className={styles.tabs} aria-label="Profile sections">{[['profile','Profile'],['skills','Skills & certifications'],['status','Status details'],...(profile?[['history','History']]:[])].map(([value,label])=><Button key={value} type="button" variant="ghost" aria-current={section===value?'page':undefined} onClick={()=>navigate(value)}>{label}</Button>)}<span>{profile?'Existing history permissions apply':'History is available after saving the profile'}</span></nav>
+          <form onSubmit={form.handleSubmit(onSubmit, showValidation)} className={styles.form}>
+            <div ref={contentRef} className={styles.scroll}>
+              <div className={styles.workspace}>
+{profile && <div hidden={section!=='history'} className={styles.section}><h3>EP Number History</h3><p>Current EP: {liveProfile?.epNumber || 'Not entered'}. Use Change EP Number in Profile to update it.</p>                      {epNumberTimeline.length > 0 && (
+                        <div className="space-y-2 pt-4">
+                            
+                            <div className="space-y-1 text-xs text-muted-foreground p-2 border rounded-md max-h-24 overflow-y-auto">
+                            {epNumberTimeline.map((record, index) => (
+                                <p key={index}>
+                                <strong>{record.epNumber}</strong> (since {format(parseISO(record.since), 'dd MMM yyyy')}
+                                {record.till ? ` till ${format(parseISO(record.till), 'dd MMM yyyy')}` : ''})
+                                </p>
+                            ))}
+                            </div>
+                        </div>
+                        )}{!epNumberTimeline.length && <p>No previous EP numbers recorded.</p>}</div>}
+{section==='status' && <div className={styles.section}><h3>Status details · {watchStatus || 'Working'}</h3><p>Change Status in Profile to enter leave or departure details.</p>{watchStatus==='Working' && <p>No additional status details are required.</p>}{watchStatus==='On Leave' && profile?.status==='On Leave' && <p>Existing leave records are available in History.</p>}</div>}
+
                   
-                  <div className="space-y-4">
+                  <div hidden={section!=='profile'} className={styles.fields}>
                       <h3 className="text-lg font-semibold border-b pb-2">Personal & Work Details</h3>
                       <div><Label>Full Name</Label><Input {...form.register('name')} />{form.formState.errors.name && <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>}</div>
                       {similarProfile && (
@@ -593,7 +619,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       </div>
                   </div>
                   
-                  <div className="space-y-4">
+                  <div hidden={section!=='profile'} className={styles.fields}>
                       <h3 className="text-lg font-semibold border-b pb-2">Contract & Policy Details</h3>
                       <div><Label>Work Order Number</Label><Input {...form.register('workOrderNumber')} /></div>
                       <div><Label>Labour License No</Label><Input {...form.register('labourLicenseNo')} /></div>
@@ -635,14 +661,14 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       <div><Label>Card Type</Label><Input {...form.register('cardType')} /></div>
                   </div>
                   
-                  <div className="space-y-4">
+                  <div hidden={section!=='profile'} className={styles.documents}>
                       <h3 className="text-lg font-semibold border-b pb-2">Document Status</h3>
                       <div><Label>Document Folder URL</Label><Input {...form.register('documentFolderUrl')} placeholder="https://..." />{form.formState.errors.documentFolderUrl && <p className="text-xs text-destructive">{form.formState.errors.documentFolderUrl.message}</p>}</div>
-                      <Separator />
+                      <div className={styles.documentHead}><span>Document</span><span>Status / Reference details</span></div>
                        {documentFields.map((field, index) => (
-                        <div key={field.id}>
+                        <div key={field.id} className={styles.documentRow}>
                           <Label>{field.name}</Label>
-                          <div className="flex gap-2">
+                          <div className={styles.documentValues}>
                               <Controller
                                   name={`documents.${index}.status`}
                                   control={form.control}
@@ -659,23 +685,11 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                           </div>
                         </div>
                       ))}
-                      {epNumberTimeline.length > 0 && (
-                        <div className="space-y-2 pt-4">
-                            <h4 className="text-sm font-semibold">EP Number History</h4>
-                            <div className="space-y-1 text-xs text-muted-foreground p-2 border rounded-md max-h-24 overflow-y-auto">
-                            {epNumberTimeline.map((record, index) => (
-                                <p key={index}>
-                                <strong>{record.epNumber}</strong> (since {format(parseISO(record.since), 'dd MMM yyyy')}
-                                {record.till ? ` till ${format(parseISO(record.till), 'dd MMM yyyy')}` : ''})
-                                </p>
-                            ))}
-                            </div>
-                        </div>
-                        )}
+
                   </div>
                   
                   {profile && (
-                    <div className="space-y-4">
+                    <div hidden={section!=='history'} className={styles.section}>
                         <Separator />
                         <h3 className="text-lg font-semibold border-b pb-2">Logbook Status</h3>
                         {liveProfile?.logbook ? (
@@ -683,7 +697,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                                 {canDeleteLogbook && (
                                     <AlertDialog>
                                         <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6 text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4"/></Button>
+                                            <Button type="button" variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6 text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4"/></Button>
                                         </AlertDialogTrigger>
                                         <AlertDialogContent>
                                             <AlertDialogHeader><AlertDialogTitle>Clear Logbook Record?</AlertDialogTitle><AlertDialogDescription>This will permanently clear the current logbook status, out date, and remarks for this employee. Are you sure?</AlertDialogDescription></AlertDialogHeader>
@@ -702,7 +716,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                     </div>
                   )}
 
-                  <div className="space-y-4 md:col-span-3">
+                  <div hidden={section!=='skills'} className={styles.section}>
                      <Separator />
                      <h3 className="text-lg font-semibold border-b pb-2">Skills</h3>
                      {skillFields.map((field, index) => (
@@ -718,7 +732,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                   </div>
 
                   {(watchStatus === 'Resigned' || watchStatus === 'Terminated' || watchStatus === 'Left the Project') && (
-                      <div className="space-y-4 md:col-span-2 lg:col-span-3">
+                      <div hidden={section!=='status'} className={styles.section}>
                          <Separator />
                          <h3 className="text-lg font-semibold border-b pb-2">{watchStatus} Details</h3>
                          <div className="grid grid-cols-2 gap-4">
@@ -734,7 +748,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       </div>
                   )}
                   {watchStatus === 'On Leave' && profile?.status !== 'On Leave' && (
-                      <div className="space-y-4 md:col-span-2 lg:col-span-3">
+                      <div hidden={section!=='status'} className={styles.section}>
                          <Separator />
                          <h3 className="text-lg font-semibold border-b pb-2">Current Leave Details</h3>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -748,7 +762,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       </div>
                   )}
                   {profile && (
-                      <div className="space-y-4 md:col-span-3">
+                      <div hidden={section!=='history'} className={styles.section}>
                         <Separator />
                         <h3 className="text-lg font-semibold border-b pb-2">PPE Issue History</h3>
                         {ppeHistoryArray.length > 0 ? (
@@ -797,7 +811,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       </div>
                     )}
                    {(Array.isArray(liveProfile?.leaveHistory) ? liveProfile.leaveHistory : (liveProfile?.leaveHistory ? Object.values(liveProfile.leaveHistory) : [])).length > 0 && (
-                      <div className="space-y-4 md:col-span-3">
+                      <div hidden={section!=='history'} className={styles.section}>
                           <Separator />
                           <h3 className="text-lg font-semibold border-b pb-2">Leave History</h3>
                           <Table>
@@ -836,7 +850,7 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       </div>
                    )}
                   {(Array.isArray(liveProfile?.memoHistory) ? liveProfile.memoHistory : (liveProfile?.memoHistory ? Object.values(liveProfile.memoHistory) : [])).length > 0 && (
-                      <div className="space-y-4 md:col-span-3">
+                      <div hidden={section!=='history'} className={styles.section}>
                           <Separator />
                           <h3 className="text-lg font-semibold border-b pb-2">Memo & Warning History</h3>
                            <Table>
@@ -884,18 +898,19 @@ export default function ManpowerProfileDialog({ isOpen, setIsOpen, profile }: Ma
                       </div>
                   )}
               </div>
-            </ScrollArea>
-            {duplicateMatches.length > 0 && <div className="shrink-0 border border-amber-300 bg-amber-50 text-slate-900 rounded-md p-3 text-sm" role="status">
+            </div>
+            {duplicateMatches.length > 0 && <div className={styles.duplicates} role="status">
               <strong>Possible duplicate: {duplicateMatches.length} matching record(s)</strong>
               <p>These details already exist. Different people can share a name or phone number; please review before proceeding.</p>
               <ul className="max-h-28 overflow-y-auto my-2">{duplicateMatches.map(({profile: match, reasons}) => <li key={match.id} className="py-1 border-b">{match.name} · Employee: {match.employeeCode || '—'} · EP: {match.epNumber || '—'} · {match.status}<br />{reasons.join(', ')}</li>)}</ul>
               <label className="flex items-start gap-2"><input type="checkbox" checked={approvedDuplicateKey === duplicateKey} onChange={e => setApprovedDuplicateKey(e.target.checked ? duplicateKey : '')} />Proceed anyway — I reviewed these records and want to save this profile.</label>
             </div>}
-            <DialogFooter className="mt-auto pt-4 border-t">
+            <DialogFooter className={styles.footer}><span>All existing field requirements apply.</span>
                 <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                <Button type="submit">{profile ? 'Save Changes' : 'Add Profile'}</Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>{profile ? 'Save Changes' : 'Add Profile'}</Button>
             </DialogFooter>
           </form>
+          <Dialog open={validationMessages.length>0} onOpenChange={open=>{if(!open)setValidationMessages([]);}}><DialogContent><DialogHeader><DialogTitle>Please correct these details</DialogTitle><DialogDescription>Your entries are retained. The relevant section is selected behind this message.</DialogDescription></DialogHeader><ul className="max-h-64 overflow-auto list-disc pl-5 text-sm">{validationMessages.map((message,i)=><li key={i}>{message}</li>)}</ul><Button type="button" onClick={()=>setValidationMessages([])}>Return to profile</Button></DialogContent></Dialog>
         </DialogContent>
       </Dialog>
       {editingMemo && profile && (
