@@ -273,7 +273,7 @@ export default function ManpowerListPage() {
 
             <TradeSummary />
             
-            {can.manage_manpower_list && overdueLeaves.length > 0 && (
+            {can.manage_manpower_list && (overdueLeaves.length > 0 || overdueLeaveSearch.length > 0) && (
                 <Card className={styles.overdue}>
                     <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                         <div>
@@ -284,6 +284,7 @@ export default function ManpowerListPage() {
                                 <Input
                                     placeholder="Search employees..."
                                     className="pl-9"
+                                    aria-label="Search ended leave employees"
                                     value={overdueLeaveSearch}
                                     onChange={(e) => setOverdueLeaveSearch(e.target.value)}
                                 />
@@ -292,6 +293,7 @@ export default function ManpowerListPage() {
                         <UpcomingLeaveReport leaves={overdueLeaves} title="Overdue Leaves" reportType="overdue" />
                     </CardHeader>
                     <CardContent className="space-y-2 max-h-60 overflow-y-auto">
+                        {overdueLeaves.length === 0 && <div role="status" className="flex flex-wrap items-center gap-3 py-3 text-sm text-muted-foreground"><span>No matching employees.</span><Button type="button" variant="outline" size="sm" onClick={() => setOverdueLeaveSearch('')}>Clear search</Button></div>}
                         {overdueLeaves.map(({ profile, leave }) => (
                             <div key={`${profile.id}-${leave.id}`} className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-md flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                                 <p className="text-sm">
@@ -317,7 +319,7 @@ export default function ManpowerListPage() {
                 </Card>
             )}
 
-            {can.manage_manpower_list && upcomingLeaves.length > 0 && (
+            {can.manage_manpower_list && (upcomingLeaves.length > 0 || upcomingLeaveSearch.length > 0) && (
                  <Card className={styles.upcoming}>
                     <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                         <div>
@@ -328,6 +330,7 @@ export default function ManpowerListPage() {
                                 <Input
                                     placeholder="Search employees..."
                                     className="pl-9"
+                                    aria-label="Search upcoming leave employees"
                                     value={upcomingLeaveSearch}
                                     onChange={(e) => setUpcomingLeaveSearch(e.target.value)}
                                 />
@@ -336,6 +339,7 @@ export default function ManpowerListPage() {
                         <UpcomingLeaveReport leaves={upcomingLeaves} title="Upcoming Leaves" reportType="upcoming" />
                     </CardHeader>
                     <CardContent className="space-y-2 max-h-40 overflow-y-auto">
+                        {upcomingLeaves.length === 0 && <div role="status" className="flex flex-wrap items-center gap-3 py-3 text-sm text-muted-foreground"><span>No matching employees.</span><Button type="button" variant="outline" size="sm" onClick={() => setUpcomingLeaveSearch('')}>Clear search</Button></div>}
                         {upcomingLeaves.map(({ profile, leave }) => (
                             <div key={`${profile.id}-${leave.id}`} className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-md">
                                 <p className="text-sm">
