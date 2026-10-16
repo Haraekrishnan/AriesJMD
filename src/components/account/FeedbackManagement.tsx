@@ -117,7 +117,7 @@ export default function FeedbackManagement() {
                                 {commentsArray.length > 0 && (
                                     <div className="space-y-2 mb-4">
                                         <Label>Conversation</Label>
-                                        <ScrollArea className="h-32 rounded-md border p-2">
+                                        <div className="rounded-md border p-2">
                                             {commentsArray.map(c => {
                                                 const commentUser = users.find(u => u.id === c.userId);
                                                 return (
@@ -130,7 +130,7 @@ export default function FeedbackManagement() {
                                                     </div>
                                                 )
                                             })}
-                                        </ScrollArea>
+                                        </div>
                                     </div>
                                 )}
                                 

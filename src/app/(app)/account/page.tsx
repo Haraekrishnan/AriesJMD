@@ -55,6 +55,24 @@ export default function AccountPage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+  const [activeSection, setActiveSection] = useState('profile');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [userPage, setUserPage] = useState(1);
+  const pageSize = 10;
+  const sections = [
+    { id: 'profile', label: 'My profile', allowed: true },
+    { id: 'users', label: 'Users', allowed: can?.manage_users },
+    { id: 'roles', label: 'Roles & permissions', allowed: can?.manage_roles || user?.role === 'Admin' },
+    { id: 'projects', label: 'Projects', allowed: can?.manage_projects },
+    { id: 'unlocks', label: 'Unlock requests', allowed: can?.manage_user_lock_status },
+    { id: 'feedback', label: 'Feedback', allowed: can?.manage_feedback },
+    { id: 'branding', label: 'Branding', allowed: can?.manage_branding },
+    { id: 'decoration', label: 'Appearance', allowed: user?.role === 'Admin' || user?.role === 'Project Coordinator' },
+  ].filter(section => section.allowed);
+  const selectedSection = sections.some(section => section.id === activeSection) ? activeSection : 'profile';
+  useEffect(() => { setUserPage(1); }, [userSearch, roleFilter, statusFilter]);
+
 
   useEffect(() => {
     setNewAppName(appName);
@@ -71,11 +89,19 @@ export default function AccountPage() {
     }
   }, [user]);
 
-  const visibleUsers = useMemo(() => {
+  const availableUsers = useMemo(() => {
     if (!user) return [];
-    const allVisible = getVisibleUsers();
-    return allVisible.filter(u => u.id !== user.id && [u.name, u.email, u.role].join(' ').toLowerCase().includes(userSearch.trim().toLowerCase()));
-  }, [user, getVisibleUsers, users, userSearch]);
+    return getVisibleUsers().filter(u => u.id !== user.id);
+  }, [user, getVisibleUsers, users]);
+  const roleOptions = [...new Set(availableUsers.map(u => u.role))].sort();
+  const visibleUsers = availableUsers.filter(u =>
+    [u.name, u.email, u.role].join(' ').toLowerCase().includes(userSearch.trim().toLowerCase()) &&
+    (roleFilter === 'all' || u.role === roleFilter) &&
+    (statusFilter === 'all' || (u.status || 'active') === statusFilter)
+  );
+  const pageCount = Math.max(1, Math.ceil(visibleUsers.length / pageSize));
+  const currentPage = Math.min(userPage, pageCount);
+  const pageUsers = visibleUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   if (loading || !user || !can) {
     return (
@@ -208,22 +234,28 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className={styles.page}>
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
         <p className="text-muted-foreground">Manage your profile, team members, and application settings.</p>
       </div>
       
+      <label className={styles.mobileSection}>
+        <span>Account section</span>
+        <select aria-label="Account section" value={selectedSection} onChange={e => setActiveSection(e.target.value)}>
+          {sections.map(section => <option key={section.id} value={section.id}>{section.label}</option>)}
+        </select>
+      </label>
       <nav className={styles.sectionNav} aria-label="Account sections">
-        <a href="#account-profile">My profile</a>
-        {can.manage_users && <a href="#account-users">Users</a>}
-        {(can.manage_roles || user.role === 'Admin') && <a href="#account-roles">Roles & permissions</a>}
-        {can.manage_projects && <a href="#account-projects">Projects</a>}
-        {can.manage_branding && <a href="#account-branding">Branding</a>}
-        {(user.role === 'Admin' || user.role === 'Project Coordinator') && <a href="#account-decoration">Appearance</a>}
+        {sections.map(section => (
+          <button key={section.id} type="button" aria-pressed={selectedSection === section.id}
+            aria-controls={'account-panel-' + section.id} onClick={() => setActiveSection(section.id)}>
+            {section.label}
+          </button>
+        ))}
       </nav>
-      <form id="account-profile" onSubmit={handleProfileSave}>
-        <div className="grid gap-8 md:grid-cols-3">
+      <form id="account-panel-profile" hidden={selectedSection !== 'profile'} onSubmit={handleProfileSave}>
+        <div className={styles.profileGrid}>
           <div className="lg:col-span-1 space-y-8">
             <Card>
               <CardHeader className="items-center text-center">
@@ -235,13 +267,13 @@ export default function AccountPage() {
                 <p className="text-sm text-muted-foreground">{user.role}</p>
               </CardHeader>
             </Card>
-            {can.manage_user_lock_status && <UnlockRequests />}
+
           </div>
           <div className="lg:col-span-2">
               <Card>
                   <CardHeader>
                   <CardTitle>Update Profile</CardTitle>
-                  <CardDescription>Edit your personal information. Changes are saved locally and synced to the database.</CardDescription>
+                  <CardDescription>Edit your personal information. Save your changes when you are ready.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                   <div className="space-y-2">
@@ -283,7 +315,7 @@ export default function AccountPage() {
             <Card className="mt-8">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Signature /> Digital Signature</CardTitle>
-                    <CardDescription>Upload a digital signature. It will be stored as a Base64 string for offline reliability and instant reports.</CardDescription>
+                    <CardDescription>Upload your signature for use in reports and documents.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -312,8 +344,13 @@ export default function AccountPage() {
         </CardFooter>
       </form>
 
+      {can.manage_user_lock_status && (
+        <section id="account-panel-unlocks" hidden={selectedSection !== 'unlocks'} aria-label="Account unlock requests">
+          <UnlockRequests />
+        </section>
+      )}
       {can.manage_feedback && (
-        <Card>
+        <Card id="account-panel-feedback" hidden={selectedSection !== 'feedback'}>
             <CardHeader>
                 <CardTitle>Feedback & Complaints</CardTitle>
                 <CardDescription>Review and manage user-submitted feedback.</CardDescription>
@@ -327,7 +364,7 @@ export default function AccountPage() {
       )}
       
        {(user.role === 'Admin' || user.role === 'Project Coordinator') && (
-        <Card>
+        <Card id="account-panel-decoration" hidden={selectedSection !== 'decoration'}>
             <CardHeader>
                 <CardTitle id="account-decoration" className="flex items-center gap-2"><PartyPopper/> Decoration Settings</CardTitle>
                 <CardDescription>Activate a global theme for special occasions.</CardDescription>
@@ -352,7 +389,7 @@ export default function AccountPage() {
        )}
 
       {can.manage_branding && (
-        <Card>
+        <Card id="account-panel-branding" hidden={selectedSection !== 'branding'}>
           <form onSubmit={handleBrandingSave}>
             <CardHeader>
               <CardTitle id="account-branding">Branding Settings</CardTitle>
@@ -385,7 +422,7 @@ export default function AccountPage() {
       )}
 
       {can.manage_projects && (
-          <Card>
+          <Card id="account-panel-projects" hidden={selectedSection !== 'projects'}>
             <CardHeader>
                 <CardTitle id="account-projects">Project Management</CardTitle>
                 <CardDescription>Add, edit, or remove project locations.</CardDescription>
@@ -399,7 +436,7 @@ export default function AccountPage() {
       )}
 
       {(can.manage_roles || user.role === 'Admin') && (
-          <Card>
+          <Card id="account-panel-roles" hidden={selectedSection !== 'roles'}>
             <CardHeader>
                 <CardTitle id="account-roles">Roles & Permissions</CardTitle>
                 <CardDescription>Define custom roles and assign granular permissions.</CardDescription>
@@ -413,7 +450,7 @@ export default function AccountPage() {
       )}
 
       {can.manage_users && (
-      <Card>
+      <Card id="account-panel-users" hidden={selectedSection !== 'users'}>
           <CardHeader className={styles.sectionHeader}>
               <div>
                   <CardTitle id="account-users">User Accounts</CardTitle>
@@ -427,8 +464,17 @@ export default function AccountPage() {
               )}
           </CardHeader>
           <CardContent>
-            <Input aria-label="Search user accounts" placeholder="Search name, email or role..." value={userSearch} onChange={e => setUserSearch(e.target.value)} className="mb-4" />
-            <p className="text-xs text-muted-foreground mb-3">{visibleUsers.length} users</p>
+            <div className={styles.filters}><Input aria-label="Search user accounts" placeholder="Search name, email or role..." value={userSearch} onChange={e => setUserSearch(e.target.value)} />
+              <select aria-label="Filter users by role" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
+                <option value="all">All roles</option>
+                {roleOptions.map(role => <option key={role} value={role}>{role}</option>)}
+              </select>
+              <select aria-label="Filter users by status" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+                <option value="all">All statuses</option><option value="active">Active</option>
+                <option value="locked">Locked</option><option value="deactivated">Deactivated</option>
+              </select>
+            </div>
+            <p className="text-sm text-muted-foreground mb-3">{visibleUsers.length} users</p>
             <div className={styles.listArea}>
               <Table className={styles.userTable}>
                   <TableHeader>
@@ -436,13 +482,13 @@ export default function AccountPage() {
                           <TableHead>User</TableHead>
                           <TableHead>Role</TableHead>
                           <TableHead>Supervisor</TableHead>
-                          <TableHead>Approver</TableHead>
+                          <TableHead>Transfer approval</TableHead><TableHead>Status</TableHead>
                           {can.manage_users && <TableHead className="text-right">Actions</TableHead>}
                       </TableRow>
                   </TableHeader>
                   <TableBody>
                     <TooltipProvider>
-                      {visibleUsers.map(report => {
+                      {pageUsers.map(report => {
                           const supervisor = users.find(u => u.id === report.supervisorId);
                           const isLocked = report.status === 'locked';
                           return (
@@ -456,7 +502,7 @@ export default function AccountPage() {
                                         <div>
                                           <div className="font-medium flex items-center gap-2">
                                             <p>{report.name}</p>
-                                            {isLocked && <Badge variant="destructive">Locked</Badge>}
+                                            
                                           </div>
                                           <p className="text-xs text-muted-foreground">{report.email}</p>
                                         </div>
@@ -464,20 +510,13 @@ export default function AccountPage() {
                                 </TableCell>
                                 <TableCell data-label="Role">{report.role}</TableCell>
                                 <TableCell data-label="Supervisor">{supervisor?.name || 'N/A'}</TableCell>
-                                <TableCell>
-                                    {report.canApproveTransfers && (
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <ShieldCheck className="h-5 w-5 text-green-600" />
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>Can Approve Transfers</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    )}
-                                </TableCell>
+                                <TableCell data-label="Transfer approval">
+{report.canApproveTransfers ? <span className={styles.approval}><ShieldCheck size={16} /> Enabled</span> : 'Not enabled'}
+</TableCell>
+<TableCell data-label="Status"><span className={isLocked ? styles.locked : report.status === 'deactivated' ? styles.inactive : styles.active}>
+{isLocked ? 'Locked' : report.status === 'deactivated' ? 'Deactivated' : 'Active'}</span></TableCell>
                                 {can.manage_users && (
-                                    <TableCell data-label="Actions" className="text-right">
+                                    <TableCell data-label="Actions" className="text-right"><div className={styles.actions}><Button variant="outline" size="sm" onClick={() => handleEditClick(report)} aria-label={'Edit ' + report.name}><Edit className="mr-2 h-4 w-4" />Edit</Button>
                                         <AlertDialog>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
@@ -512,15 +551,25 @@ export default function AccountPage() {
                                                     <AlertDialogAction onClick={() => handleRemoveAccess(report.id)}>Confirm Removal</AlertDialogAction>
                                                 </AlertDialogFooter>
                                             </AlertDialogContent>
-                                        </AlertDialog>
+                                        </AlertDialog></div>
                                     </TableCell>
                                 )}
                             </TableRow>
                           );
                       })}
                     </TooltipProvider>
+                    {visibleUsers.length === 0 && <TableRow><TableCell colSpan={6} className={styles.empty}>
+                      <p>No users match your search or filters.</p>
+                      <Button variant="outline" onClick={() => { setUserSearch(''); setRoleFilter('all'); setStatusFilter('all'); }}>Clear filters</Button>
+                    </TableCell></TableRow>}
                   </TableBody>
               </Table>
+              </div>
+              <div className={styles.pagination}>
+                <span>{visibleUsers.length ? 'Showing ' + ((currentPage - 1) * pageSize + 1) + '–' + Math.min(currentPage * pageSize, visibleUsers.length) + ' of ' + visibleUsers.length + ' users' : '0 users'}</span>
+                <div><Button variant="outline" disabled={currentPage === 1} onClick={() => setUserPage(currentPage - 1)}>Previous</Button>
+                  <span aria-live="polite">Page {currentPage} of {pageCount}</span>
+                  <Button variant="outline" disabled={currentPage === pageCount} onClick={() => setUserPage(currentPage + 1)}>Next</Button></div>
               </div>
           </CardContent>
       </Card>

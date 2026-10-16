@@ -1,5 +1,7 @@
 
 'use client';
+import styles from './vehicle-usage-worksheet.module.css';
+import { Textarea } from '../ui/textarea';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -27,6 +29,10 @@ interface EditVehicleUsageDialogProps {
 export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, currentMonth }: EditVehicleUsageDialogProps) {
     const { user, saveVehicleUsageRecord, vehicleUsageRecords } = useAppContext();
     const { toast } = useToast();
+    const gridRef=useRef<HTMLDivElement>(null);
+    const [frame,setFrame]=useState({left:12,top:12});
+    useEffect(()=>{if(!isOpen || typeof window==='undefined')return;const measure=()=>{const nav=document.querySelector('.portal-navigation')?.getBoundingClientRect();const header=document.querySelector('.main-portal header')?.getBoundingClientRect();setFrame({left:nav && window.innerWidth>=1024?nav.right+12:12,top:header && window.innerWidth>=768?header.bottom+12:12});};measure();window.addEventListener('resize',measure);return()=>window.removeEventListener('resize',measure);},[isOpen]);
+    const gridKeyDown=(event:React.KeyboardEvent<HTMLDivElement>)=>{if(event.key!=='Enter'||event.nativeEvent.isComposing||event.ctrlKey||event.metaKey||event.altKey)return;const target=event.target as HTMLElement;const day=Number(target.dataset.day);const field=target.dataset.field;if(!day||!field)return;event.preventDefault();const next=day+(event.shiftKey?-1:1);gridRef.current?.querySelector<HTMLElement>('[data-day="'+next+'"][data-field="'+field+'"]')?.focus();};
     
     // Snapshot saved data once per open vehicle/month session. Live updates must not replace the draft.
     const initializedSession = useRef<string | null>(null);
@@ -194,28 +200,25 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="max-w-7xl h-[95vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
-                <DialogHeader>
-                    <DialogTitle>Edit Vehicle Usage: {vehicle.vehicleNumber}</DialogTitle>
+            <DialogContent className={styles.dialog} overlayClassName="bg-black/20" style={{'--usage-left':frame.left+'px','--usage-top':frame.top+'px'} as React.CSSProperties} onInteractOutside={(e) => e.preventDefault()}>
+                <DialogHeader className={styles.header}>
+                    <DialogTitle>Vehicle usage <span className={styles.vehicle}>{vehicle.vehicleNumber}</span></DialogTitle>
                     <DialogDescription>
                         Log daily usage for {format(currentMonth, 'MMMM yyyy')}.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-hidden flex flex-col">
-                    <div className="p-4 border rounded-md mb-4 bg-background grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className={styles.body}>
+                    <div className={styles.metadata}>
                         <div className="space-y-2"><Label>Job No.</Label><Input value={headerStates.jobNo} onChange={e => handleHeaderChange('jobNo', e.target.value)} /></div>
                         <div className="space-y-2"><Label>Vehicle Type</Label><Input value={headerStates.vehicleType} onChange={e => handleHeaderChange('vehicleType', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>Over Time (Header)</Label><Input value={monthlyTotalOvertime} readOnly className="font-bold" /></div>
                         <div className="space-y-2"><Label>Extra Night</Label><Input type="number" value={headerStates.extraNight} onChange={e => handleHeaderChange('extraNight', e.target.value)} /></div>
                         <div className="space-y-2"><Label>Extra Days</Label><Input type="number" value={headerStates.extraDays} onChange={e => handleHeaderChange('extraDays', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>Total KM</Label><Input value={monthlyTotalKm} readOnly className="font-bold" /></div>
-                        <div className="space-y-2"><Label>Extra KM</Label><Input type="number" value={monthlyTotalKm > 3000 ? monthlyTotalKm - 3000 : 0} readOnly className="font-bold" /></div>
                         <div className="space-y-2"><Label>Verified By</Label><Input value={headerStates.verifiedByName} onChange={e => handleHeaderChange('verifiedByName', e.target.value)} /></div>
                         <div className="space-y-2"><Label>Verified Date</Label><DatePickerInput value={headerStates.verifiedByDate} onChange={date => handleHeaderChange('verifiedByDate', date)} /></div>
                     </div>
-                     <ScrollArea className="flex-1">
-                        <Table className="min-w-full border-separate border-spacing-0">
+                     <div ref={gridRef} className={styles.scroll} role="region" aria-label="Daily vehicle usage worksheet" tabIndex={0} onKeyDown={gridKeyDown}>
+                        <table className={styles.table}><colgroup><col style={{width:135}}/><col style={{width:145}}/><col style={{width:145}}/><col style={{width:105}}/><col style={{width:145}}/><col/><col style={{width:85}}/></colgroup>
                             <thead className="sticky top-0 z-30 bg-card">
                                 <TableRow>
                                     <TableHead className="sticky top-0 z-30 bg-card shadow-sm border-r">Day</TableHead>
@@ -236,22 +239,23 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                                     const totalKm = endKm > startKm ? endKm - startKm : 0;
                                     const isHoliday = cellStates[`${day}-isHoliday`];
                                     return (
-                                        <TableRow key={day} className={cn((isHoliday || isSunday) && 'bg-yellow-100 dark:bg-yellow-900/30')}>
-                                            <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd-MM-yyyy')}</TableCell>
-                                            <TableCell><Input type="number" min="0" className="h-8 text-center" value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleKmBlur(day, 'startKm')} /></TableCell>
-                                            <TableCell><Input type="number" min="0" className="h-8 text-center" value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleKmBlur(day, 'endKm')} /></TableCell>
+                                        <TableRow key={day} data-holiday={!!(isHoliday || isSunday)}>
+                                            <TableCell className={cn("sticky left-0 font-medium z-10 border-r", (isHoliday || isSunday) ? 'bg-yellow-100 dark:bg-yellow-900/30' : 'bg-card')}>{format(dateForDay, 'dd MMM')} <span className={styles.weekday}>{format(dateForDay,'EEE')}</span></TableCell>
+                                            <TableCell><Input type="number" min="0" className="h-8 text-center" data-day={day} data-field="startKm" aria-label={'Day '+day+' startKm'} value={cellStates[`${day}-startKm`] || ''} onChange={(e) => handleInputChange(day, 'startKm', e.target.value)} onBlur={() => handleKmBlur(day, 'startKm')} /></TableCell>
+                                            <TableCell><Input type="number" min="0" className="h-8 text-center" data-day={day} data-field="endKm" aria-label={'Day '+day+' endKm'} value={cellStates[`${day}-endKm`] || ''} onChange={(e) => handleInputChange(day, 'endKm', e.target.value)} onBlur={() => handleKmBlur(day, 'endKm')} /></TableCell>
                                             <TableCell className="font-medium text-center">{totalKm}</TableCell>
-                                            <TableCell><Input className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} /></TableCell>
-                                            <TableCell><Input className="h-8" value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} /></TableCell>
-                                            <TableCell className="text-center"><Checkbox checked={isHoliday} onCheckedChange={(checked) => handleInputChange(day, 'isHoliday', !!checked)} /></TableCell>
+                                            <TableCell><Input data-day={day} data-field="overtime" aria-label={'Day '+day+' overtime'} placeholder="H:MM" className="h-8" value={cellStates[`${day}-overtime`] || ''} onChange={(e) => handleInputChange(day, 'overtime', e.target.value)} /></TableCell>
+                                            <TableCell><Textarea rows={1} data-day={day} data-field="remarks" aria-label={'Day '+day+' remarks'} ref={node=>{if(node){node.style.height='auto';node.style.height=node.scrollHeight+'px';}}} onInput={e=>{e.currentTarget.style.height='auto';e.currentTarget.style.height=e.currentTarget.scrollHeight+'px';}} value={cellStates[`${day}-remarks`] || ''} onChange={(e) => handleInputChange(day, 'remarks', e.target.value)} /></TableCell>
+                                            <TableCell className="text-center"><Checkbox aria-label={'Day '+day+' holiday'} checked={!!isHoliday} onCheckedChange={(checked) => handleInputChange(day, 'isHoliday', !!checked)} /></TableCell>
                                         </TableRow>
                                     )
                                 })}
                             </TableBody>
-                        </Table>
-                     </ScrollArea>
+                        </table>
+                     </div>
                 </div>
-                <DialogFooter>
+                <div className={styles.totals} aria-label="Monthly usage totals"><span>Total KM <strong>{monthlyTotalKm.toLocaleString('en-IN')}</strong></span><span>Extra KM <strong>{Math.max(0,monthlyTotalKm-3000).toLocaleString('en-IN')}</strong></span><span>Total overtime <strong>{monthlyTotalOvertime}</strong></span><small>Extra KM above 3,000 · Yellow rows: Sundays / marked holidays</small></div>
+                <DialogFooter className={styles.footer}><span>Tab: next field · Enter: next day · Shift+Enter: previous day<br/>End KM carries forward to the next day’s Start KM.</span>
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
                     <Button onClick={handleSave}>Save Changes</Button>
                 </DialogFooter>

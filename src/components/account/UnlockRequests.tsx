@@ -22,7 +22,7 @@ export default function UnlockRequests() {
     const pendingRequests = unlockRequests.filter(r => r.status === 'pending');
     
     if (pendingRequests.length === 0) {
-        return null;
+        return <Card><CardHeader><CardTitle>Account Unlock Requests</CardTitle><CardDescription>No pending unlock requests.</CardDescription></CardHeader></Card>;
     }
 
     return (

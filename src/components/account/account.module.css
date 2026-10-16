@@ -6,7 +6,7 @@
 .sectionNav a { padding:10px 14px; border-radius:7px; font-size:13px; font-weight:500; background:#edf4fc; color:#244c86; text-decoration:none; }
 .sectionNav a:hover, .sectionNav a:focus-visible { background:#dceaff; outline-color:#2563eb; }
 .sectionHeader { display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
-.listArea { width:100%; min-width:0; max-height:600px; overflow:auto; overscroll-behavior:contain; }
+.listArea { width:100%; min-width:0; max-height:none; overflow:visible; }
 .userTable, .managementTable { width:100%; }
 .userTable td, .managementTable td { overflow-wrap:anywhere; }
 .userTable td:first-child { min-width:200px; }
@@ -47,3 +47,62 @@
  .dialog [role=dialog] { max-width:100%; }
  .permissionList { max-height:38dvh; }
 }
+
+/* Account sections share the app viewport scroll; hidden panels retain form drafts. */
+.page [hidden] { display:none !important; }
+.page { gap:20px; padding-bottom:16px; }
+.sectionNav { padding:0; gap:4px 12px; border:0; border-bottom:1px solid #dce6f2; border-radius:0; background:transparent; }
+.sectionNav button { padding:12px 10px; min-height:44px; border-bottom:3px solid transparent; font-size:14px; color:#475569; }
+.sectionNav button[aria-pressed=true] { border-color:#2563eb; color:#1d4ed8; font-weight:600; }
+.sectionNav button:focus-visible { outline:2px solid #2563eb; outline-offset:-2px; }
+.profileGrid { display:grid; grid-template-columns:minmax(220px,1fr) minmax(0,2fr); gap:20px; }
+.profileGrid > div { grid-column:auto; }
+.filters { display:grid; grid-template-columns:minmax(0,1fr) minmax(150px,200px) minmax(150px,200px); gap:12px; margin-bottom:16px; }
+.filters select { width:100%; min-width:0; border:1px solid #dce6f2; border-radius:6px; padding:8px 12px; background:#fff; font-size:14px; min-height:40px; }
+.userTable { table-layout:fixed; }
+.userTable th:first-child { width:26%; }
+.userTable th:last-child { width:150px; }
+.userTable th, .userTable td { padding:14px 12px; }
+.userTable th { font-size:13px; }
+.userTable td { font-size:14px; }
+.userTable tbody tr:nth-child(even) { background:#f8fbff; }
+.actions, .approval { display:flex; align-items:center; gap:6px; }
+.actions { justify-content:flex-end; }
+.active, .locked, .inactive { display:inline-flex; padding:4px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+.active { background:#dcfce7; color:#166534; }
+.locked { background:#fee2e2; color:#b91c1c; }
+.inactive { background:#e2e8f0; color:#475569; }
+.approval { color:#166534; }
+.pagination { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding-top:16px; font-size:13px; color:#475569; }
+.pagination > div { display:flex; align-items:center; gap:12px; }
+.empty { text-align:center !important; padding:24px !important; }
+.empty p { margin-bottom:12px; }
+@media(max-width:900px) {
+ .profileGrid { grid-template-columns:1fr; }
+ .filters { grid-template-columns:1fr 1fr; }
+ .filters > input { grid-column:1 / -1; }
+}
+@media(max-width:640px) {
+ .sectionNav { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+ .sectionNav button { padding:8px; text-align:left; font-size:13px; border-radius:6px; }
+ .sectionNav button[aria-pressed=true] { background:#eff6ff; }
+ .filters { gap:8px; }
+ .filters select { font-size:16px; min-height:44px; }
+ .userTable { table-layout:auto; }
+ .userTable td { padding:8px 0; }
+ .userTable td[data-label] { font-size:14px; }
+ .userTable td::before { font-size:12px; min-width:98px; }
+ .actions { flex-wrap:wrap; }
+ .pagination { align-items:stretch; }
+ .pagination > div { width:100%; justify-content:space-between; gap:6px; }
+ .page [class*="p-6"] { padding:16px; }
+}
+
+.mobileSection { display:none; }
+@media(max-width:640px) {
+ .sectionNav { display:none; }
+ .mobileSection { display:flex; flex-direction:column; gap:6px; font-size:13px; color:#475569; }
+ .mobileSection select { width:100%; min-height:44px; padding:10px; border:1px solid #dce6f2; border-radius:6px; background:#fff; font-size:16px; color:#0f172a; }
+}
+
+@media(max-width:640px) { .actions button { min-width:44px; } }

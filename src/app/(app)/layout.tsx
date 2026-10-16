@@ -1,4 +1,5 @@
 'use client';
+import './portal-theme.css';
 
 import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -18,6 +19,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!pathname.startsWith('/ehs')) document.body.dataset.portalTheme = 'main';
+    else delete document.body.dataset.portalTheme;
+    return () => { delete document.body.dataset.portalTheme; };
+  }, [pathname]);
 
   const isInactive = user?.status === 'locked' || user?.status === 'deactivated';
 
@@ -56,16 +63,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
+    <div className={`${pathname.startsWith('/ehs') ? '' : 'main-portal'} flex w-full bg-background ${pathname === '/account' ? 'h-dvh min-h-0 overflow-hidden' : 'min-h-screen'}`}>
       <DecorationProvider />
       <AppSidebar />
-      <div className="flex h-screen w-full flex-col md:pl-64">
+      <div className={`flex min-h-0 min-w-0 w-full flex-col md:pl-64 ${pathname === '/account' ? 'h-full' : 'h-screen'}`}>
         <Header />
         <div className="p-2 border-b">
           <BroadcastFeed />
         </div>
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
-          <div className="mt-4">{children}</div>
+        <main className={`${pathname.startsWith('/ehs') ? '' : 'portal-content'} min-h-0 flex-1 overflow-y-auto overflow-x-hidden`}>
+          <div className="min-w-0">{children}</div>
         </main>
       </div>
     </div>
