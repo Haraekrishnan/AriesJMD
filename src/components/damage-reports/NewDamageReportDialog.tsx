@@ -1,4 +1,5 @@
 'use client';
+import { damageEquipmentItems } from './damage-equipment';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -36,7 +37,8 @@ interface NewDamageReportDialogProps {
 
 export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageReportDialogProps) {
   const { user } = useAuth();
-  const { addDamageReport, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, damageReports } = useInventory();
+  const inventory = useInventory();
+  const { addDamageReport, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, damageReports } = inventory;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -63,20 +65,13 @@ export default function NewDamageReportDialog({ isOpen, setIsOpen }: NewDamageRe
   }, [damageReports]);
   
   const allItems = useMemo(() => {
-    const items = [
-        ...inventoryItems.filter(item => item.category === 'General'),
-        ...utMachines,
-        ...dftMachines,
-        ...digitalCameras,
-        ...anemometers,
-        ...otherEquipments,
-    ];
+    const items = damageEquipmentItems(inventory).filter(item => item.source !== 'inventoryItems' || item.category === 'General');
     if (!user || !user.projectIds || user.role === 'Admin') {
       return items;
     }
     const userProjectIds = new Set(user.projectIds);
     return items.filter(item => item.projectId && userProjectIds.has(item.projectId));
-  }, [inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, user]);
+  }, [inventory, user]);
 
 
   const selectableItems = useMemo(() => {

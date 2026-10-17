@@ -1,4 +1,5 @@
 'use client';
+import { damageEquipmentItems } from '@/components/damage-reports/damage-equipment';
 import { transferItemProjectUpdates } from '@/components/requests/transfer-item-types';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useMemo, useCallback, Dispatch, SetStateAction } from 'react';
@@ -1713,9 +1714,9 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
         updates[`damageReports/${reportId}/status`] = status;
 
         if (status === 'Approved' && report.itemId) {
-            const item = inventoryItems.find(i => i.id === report.itemId);
+            const item = damageEquipmentItems({inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws, weldingMachines, walkieTalkies, mobileSims, laptopsDesktops}).find(i => i.id === report.itemId);
             if (item) {
-                updates[`inventoryItems/${report.itemId}/status`] = 'Damaged';
+                updates[`${item.source}/${report.itemId}/status`] = 'Damaged';
             }
         }
         
@@ -1725,7 +1726,7 @@ export function InventoryProvider({ children }: { children: ReactNode }) {
             // Placeholder for adding comments to damage reports if needed later
         }
 
-    }, [user, damageReportsById, inventoryItems]);
+    }, [user, damageReportsById, inventoryItems, utMachines, dftMachines, digitalCameras, anemometers, otherEquipments, pneumaticDrillingMachines, pneumaticAngleGrinders, wiredDrillingMachines, cordlessDrillingMachines, wiredAngleGrinders, cordlessAngleGrinders, cordlessReciprocatingSaws, weldingMachines, walkieTalkies, mobileSims, laptopsDesktops]);
     
     const deleteDamageReport = useCallback((reportId: string) => {
         if (!user || user.role !== 'Admin') {

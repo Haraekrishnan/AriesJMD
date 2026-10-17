@@ -17,3 +17,10 @@
 :global(.main-portal) .overdue { background:#fff7f7; }
 :global(.main-portal) .upcoming { background:#fffbeb; }
 :global(.main-portal) .starting { background:#eff6ff; }
+
+/* Comfortable action targets without changing workflows. */
+.page .toolbar {gap:8px; width:100%;}
+.page .toolbar button,.page .overdue button,.page .upcoming button,.page .starting button {height:auto;min-height:40px;padding:8px 14px;font-size:14px;line-height:20px;white-space:nowrap;}
+.page .toolbar svg,.page .overdue button svg,.page .starting button svg {width:16px;height:16px;flex-shrink:0;}
+.page .overdue button,.page .starting button {margin-block:2px;}
+@media(max-width:650px){.page .toolbar button,.page .overdue button,.page .upcoming button,.page .starting button{min-height:44px;} .page .toolbar{gap:8px}.page .overdue div:has(>button),.page .starting div:has(>button){flex-wrap:wrap;gap:8px;}}

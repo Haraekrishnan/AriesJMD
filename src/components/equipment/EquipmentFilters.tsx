@@ -48,12 +48,7 @@ export default function EquipmentFilters({ onFiltersChange }: EquipmentFiltersPr
     const canViewAllProjects = can.manage_equipment_status || user?.role === 'Admin' || user?.role === 'NDT Supervisor';
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Filters</CardTitle>
-                <CardDescription>Filter equipment across all categories by location and status.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-4 items-center">
+        <div className="flex flex-wrap gap-2 items-center py-2" aria-label="Equipment filters">
                 <Select value={filters.status} onValueChange={(v) => handleFilterChange('status', v)}>
                     <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by status..." /></SelectTrigger>
                     <SelectContent>
@@ -76,7 +71,6 @@ export default function EquipmentFilters({ onFiltersChange }: EquipmentFiltersPr
                     </SelectContent>
                 </Select>
                 <Button variant="ghost" onClick={handleClear}><X className="mr-2 h-4 w-4" /> Clear Filters</Button>
-            </CardContent>
-        </Card>
+        </div>
     );
 }

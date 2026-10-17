@@ -48,7 +48,6 @@ import AnemometerTable from '@/components/anemometer/AnemometerTable';
 import AddOtherEquipmentDialog from '@/components/other-equipment/AddOtherEquipmentDialog';
 import EditOtherEquipmentDialog from '@/components/other-equipment/EditOtherEquipmentDialog';
 import OtherEquipmentTable from '@/components/other-equipment/OtherEquipmentTable';
-import EquipmentSummary from '@/components/equipment/EquipmentSummary';
 import GenerateTpCertDialog from '@/components/inventory/GenerateTpCertDialog';
 import PendingTransfers from '@/components/requests/PendingTransfers';
 import { useToast } from '@/hooks/use-toast';
@@ -670,7 +669,7 @@ export default function EquipmentStatusPage() {
                 </div>
             </div>
 
-            <EquipmentSummary />
+
 
             {expiringMachines.length > 0 && (
                 <Card>
@@ -693,7 +692,7 @@ export default function EquipmentStatusPage() {
                 </Card>
             )}
 
-            <Card>
+            <details className={styles.reportDisclosure}><summary>Usage report · Select dates and export</summary>            <Card>
                 <CardHeader>
                     <CardTitle>Usage Report</CardTitle>
                     <CardDescription>Count active usage days for machines within a date range.</CardDescription>
@@ -774,11 +773,12 @@ export default function EquipmentStatusPage() {
                 )}
             </Card>
 
-            <EquipmentFilters onFiltersChange={setFilters} />
+</details>
+
 
             <Card>
-                <CardHeader>
-                    <div className="flex justify-end gap-2">
+                <CardContent>
+                    <EquipmentCategoryRegister filters={<EquipmentFilters onFiltersChange={setFilters} />} actions={<div className="flex justify-end gap-2">
                         {canAddEquipment && (
                             <Button onClick={handleAddClick}>
                                 <PlusCircle className="mr-2 h-4 w-4" /> Add Equipment
@@ -787,10 +787,7 @@ export default function EquipmentStatusPage() {
                         <Button onClick={() => setIsUpdateItemsOpen(true)} variant="outline">
                             <FilePen className="mr-2 h-4 w-4"/> Update Items
                         </Button>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <EquipmentCategoryRegister activeTab={activeTab} onTabChange={setActiveTab} groups={[
+                    </div>} activeTab={activeTab} onTabChange={setActiveTab} groups={[
 {id:'ut-machines', source:'utMachines', name:'UT Machines', items:filteredUtMachines, render: items => <UTMachineTable items={items} onEdit={handleEditUT} onLogManager={handleLogManagerUT} />} ,
 {id:'dft-machines', source:'dftMachines', name:'DFT Machines', items:filteredDftMachines, render: items => <DftMachineTable items={items} onEdit={handleEditDft} onLogManager={handleLogManagerDft} />} ,
 {id:'welding-machines', source:'weldingMachines', name:'Welding Machines', items:filteredWeldingMachines, render: items => <WeldingMachineTable items={items} onEdit={handleEditWeldingMachine} />} ,

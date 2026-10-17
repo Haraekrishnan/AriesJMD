@@ -1,4 +1,5 @@
 'use client';
+import { damageEquipmentItems } from './damage-equipment';
 
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
@@ -22,15 +23,12 @@ const statusVariant: { [key in DamageReportStatus]: 'secondary' | 'destructive' 
 
 export default function DamageReportList() {
   const { user, users } = useAuth();
-  const { damageReports = [], inventoryItems, utMachines, dftMachines, deleteDamageReport } = useInventory();
+  const inventory = useInventory();
+  const { damageReports = [], inventoryItems, utMachines, dftMachines, deleteDamageReport } = inventory;
   const [viewingReport, setViewingReport] = useState<DamageReport | null>(null);
   const { toast } = useToast();
 
-  const allItems = useMemo(() => [
-    ...inventoryItems,
-    ...utMachines,
-    ...dftMachines,
-  ], [inventoryItems, utMachines, dftMachines]);
+  const allItems = useMemo(() => damageEquipmentItems(inventory), [inventory]);
 
   const reportsWithDetails = useMemo(() => {
     return damageReports.map(report => {

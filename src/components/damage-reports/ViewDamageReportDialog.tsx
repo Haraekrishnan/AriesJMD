@@ -1,4 +1,5 @@
 'use client';
+import { damageEquipmentItems } from './damage-equipment';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useInventory } from '@/contexts/inventory-provider';
@@ -29,11 +30,12 @@ interface ViewDamageReportDialogProps {
 
 export default function ViewDamageReportDialog({ isOpen, setIsOpen, report }: ViewDamageReportDialogProps) {
   const { user, users } = useAuth();
-  const { inventoryItems, utMachines, dftMachines, updateDamageReportStatus } = useInventory();
+  const inventory = useInventory();
+  const { inventoryItems, utMachines, dftMachines, updateDamageReportStatus } = inventory;
   const { toast } = useToast();
   const [comment, setComment] = useState('');
 
-  const allItems = useMemo(() => [ ...inventoryItems, ...utMachines, ...dftMachines ], [inventoryItems, utMachines, dftMachines]);
+  const allItems = useMemo(() => damageEquipmentItems(inventory), [inventory]);
   const item = useMemo(() => allItems.find(i => i.id === report.itemId), [report, allItems]);
   const reporter = useMemo(() => users.find(u => u.id === report.reporterId), [report, users]);
   
