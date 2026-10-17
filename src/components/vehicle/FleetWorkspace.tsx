@@ -56,7 +56,7 @@ export default function FleetWorkspace(props: Props) {
     (ownerType === 'all' || row.type === ownerType) &&
     (dueFilter === 'all' || expiryInfo(row.expiry).tone === dueFilter));
   const total = activeTab === 'vehicles' ? filteredVehicles.length : activeTab === 'drivers' ? filteredDrivers.length : filteredDocuments.length;
-  const pageSize = 8, pages = Math.max(1, Math.ceil(total / pageSize)), currentPage = Math.min(page, pages);
+  const pageSize = 20, pages = Math.max(1, Math.ceil(total / pageSize)), currentPage = Math.min(page, pages);
   const slice = <T,>(items: T[]) => items.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const resetFilters = () => { setSearch(''); setStatus('all'); setDueFilter('all'); setOwnerType('all'); setPage(1); };
   const toggle = (id: string) => setExpanded(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });

@@ -113,7 +113,7 @@ export default function VehicleUsageSheet() {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [page, setPage] = useState(1);
-    const pageSize = 8;
+    const pageSize = 20;
     // The provider annotation has an extra month index; persisted records use the shared type.
     const monthRecords = (vehicleUsageRecords as unknown as VehicleUsageRecord)?.[format(currentMonth, 'yyyy-MM')]?.records;
     const monthVehicles = useMemo(() => visibleMonthVehicles(vehicles, monthRecords), [vehicles, monthRecords]);
