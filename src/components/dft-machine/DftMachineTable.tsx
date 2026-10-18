@@ -1,5 +1,6 @@
 
 'use client';
+import { equipmentStatusLabel } from '@/components/equipment/equipment-status-label';
 import { useState, useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -106,7 +107,7 @@ export default function DftMachineTable({ items, onEdit, onLogManager }: DftMach
                             <TableCell className={cn(getDateStyles(machine.tpInspectionDueDate))}>
                               {machine.tpInspectionDueDate ? format(new Date(machine.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}
                             </TableCell>
-                            <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>
+                            <TableCell><Badge variant={getStatusVariant(machine.status)}>{equipmentStatusLabel(machine.status)}</Badge></TableCell>
                             <TableCell>
                               {machine.certificateUrl && (
                                   <Tooltip>

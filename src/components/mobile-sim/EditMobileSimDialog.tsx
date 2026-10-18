@@ -1,5 +1,7 @@
 
 'use client';
+import { equipmentStatusLabel } from '@/components/equipment/equipment-status-label';
+import editStyles from '@/components/equipment/equipment-edit.module.css';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -114,13 +116,12 @@ export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMob
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
-        <DialogHeader>
+      <DialogContent className={editStyles.dialog} onInteractOutside={(e) => e.preventDefault()}>
+        <DialogHeader className={editStyles.header}>
           <DialogTitle>Edit Mobile/SIM</DialogTitle>
           <DialogDescription>Update the details for this item.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
+        <form onSubmit={form.handleSubmit(onSubmit)} className={editStyles.form}><div className={editStyles.body}><section className={editStyles.section} aria-label="Equipment identity"><h3>Equipment identity</h3><div className={editStyles.fields}><div className={editStyles.field}><div className="space-y-2">
               <Label>Type</Label>
               <Controller control={form.control} name="type" render={({ field }) => (
                 <Select onValueChange={field.onChange} value={field.value}>
@@ -132,9 +133,8 @@ export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMob
                   </SelectContent>
                 </Select>
               )}/>
-            </div>
-            
-            {(watchType === 'Mobile' || watchType === 'Mobile with SIM') && (
+            </div></div>
+<div className={editStyles.field}>{(watchType === 'Mobile' || watchType === 'Mobile with SIM') && (
               <fieldset className="border p-4 rounded-md space-y-4">
                 <legend className="text-sm font-medium px-1">Mobile Details</legend>
                 <div className="grid grid-cols-2 gap-4">
@@ -143,9 +143,8 @@ export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMob
                 </div>
                 <div><Label>IMEI</Label><Input {...form.register('imei')} />{form.formState.errors.imei && <p className="text-xs text-destructive">{form.formState.errors.imei.message}</p>}</div>
               </fieldset>
-            )}
-
-            {(watchType === 'SIM' || watchType === 'Mobile with SIM') && (
+            )}</div>
+<div className={editStyles.field}>{(watchType === 'SIM' || watchType === 'Mobile with SIM') && (
               <fieldset className="border p-4 rounded-md space-y-4">
                 <legend className="text-sm font-medium px-1">SIM Details</legend>
                 <div className="grid grid-cols-2 gap-4">
@@ -153,19 +152,16 @@ export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMob
                   <div><Label>Number</Label><Input {...form.register('simNumber')} />{form.formState.errors.simNumber && <p className="text-xs text-destructive">{form.formState.errors.simNumber.message}</p>}</div>
                 </div>
               </fieldset>
-            )}
-            
-            <div><Label>Aries ID</Label><Input {...form.register('ariesId')} /></div>
-            
-            <div className="space-y-2">
+            )}</div>
+<div className={editStyles.field}><div><Label>Aries ID</Label><Input {...form.register('ariesId')} /></div></div>
+<div className={editStyles.field}><div className="space-y-2">
                 <Label>Allotment Type</Label>
                 <RadioGroup value={allotmentType} onValueChange={(value) => handleAllotmentTypeChange(value as 'user' | 'manpower')} className="flex gap-4">
                     <div className="flex items-center space-x-2"><RadioGroupItem value="user" id="edit-user" /><Label htmlFor="edit-user">App User</Label></div>
                     <div className="flex items-center space-x-2"><RadioGroupItem value="manpower" id="edit-manpower" /><Label htmlFor="edit-manpower">Manpower</Label></div>
                 </RadioGroup>
-            </div>
-
-            <div className="space-y-2">
+            </div></div></div></section>
+<section className={editStyles.section} aria-label="Assignment & status"><h3>Assignment & status</h3><div className={editStyles.fields}><div className={editStyles.field}><div className="space-y-2">
               <Label>Allotted To (Optional)</Label>
                <div className="flex gap-2">
                   <Controller
@@ -208,20 +204,14 @@ export default function EditMobileSimDialog({ isOpen, setIsOpen, item }: EditMob
                   <Button type="button" variant="outline" onClick={() => form.setValue('allottedToUserId', '')}>Unassign</Button>
                </div>
                {form.formState.errors.allottedToUserId && <p className="text-xs text-destructive">{form.formState.errors.allottedToUserId.message}</p>}
-            </div>
-            
-            <div><Label>Allotment Date</Label><Controller control={form.control} name="allotmentDate" render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />{form.formState.errors.allotmentDate && <p className="text-xs text-destructive">{form.formState.errors.allotmentDate.message}</p>}</div>
-            
-            <div className="grid grid-cols-2 gap-4">
-                <div><Label>Project</Label><Controller control={form.control} name="projectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select project..."/></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>{form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}</div>
-                <div><Label>Status</Label><Controller control={form.control} name="status" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>)}/></div>
-            </div>
-            <div><Label>Remarks</Label><Textarea {...form.register('remarks')} /></div>
-          <DialogFooter>
+            </div></div>
+<div className={editStyles.field}><div><Label>Allotment Date</Label><Controller control={form.control} name="allotmentDate" render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />{form.formState.errors.allotmentDate && <p className="text-xs text-destructive">{form.formState.errors.allotmentDate.message}</p>}</div></div>
+<div className={editStyles.field}><div><Label>Project</Label><Controller control={form.control} name="projectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue placeholder="Select project..."/></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>{form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}</div></div>
+<div className={editStyles.field}><div><Label>Status</Label><Controller control={form.control} name="status" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{statusOptions.map(s => <SelectItem key={s} value={s}>{equipmentStatusLabel(s)}</SelectItem>)}</SelectContent></Select>)}/></div></div></div></section>
+<section className={editStyles.section} aria-label="Remarks"><h3>Remarks</h3><div className={editStyles.fields}><div className={editStyles.wideField}><div><Label>Remarks</Label><Textarea {...form.register('remarks')} /></div></div></div></section></div><DialogFooter className={editStyles.footer}>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Save Changes</Button>
-          </DialogFooter>
-        </form>
+          </DialogFooter></form>
       </DialogContent>
     </Dialog>
   );

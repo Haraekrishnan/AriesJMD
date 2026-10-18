@@ -1,4 +1,5 @@
 'use client';
+import { equipmentStatusLabel } from '@/components/equipment/equipment-status-label';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -89,7 +90,7 @@ export default function AddPneumaticAngleGrinderDialog({ isOpen, setIsOpen }: Ad
                         <Select onValueChange={field.onChange} value={field.value}>
                             <SelectTrigger><SelectValue placeholder="Select status..."/></SelectTrigger>
                             <SelectContent>
-                                {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                {statusOptions.map(s => <SelectItem key={s} value={s}>{equipmentStatusLabel(s)}</SelectItem>)}
                             </SelectContent>
                         </Select>
                     )}/>

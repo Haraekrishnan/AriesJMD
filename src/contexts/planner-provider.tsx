@@ -1,11 +1,12 @@
 
 'use client';
+import { plannerDeletionUpdates } from '@/components/planner/planner-deletion';
 import { isJmsAssignee, canReassignJms } from '@/components/job-progress/jms-users';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo, Dispatch, SetStateAction } from 'react';
 import { PlannerEvent, DailyPlannerComment, Comment, JobSchedule, JobScheduleItem, JobRecord, JobRecordPlant, VehicleUsageRecord, User, Role, JobStep, JobProgress, JobStepStatus, Timesheet, TimesheetStatus, DocumentMovement, DocumentMovementStatus } from '@/lib/types';
 import { rtdb } from '@/lib/rtdb';
-import { ref, onValue, set, push, update, get, remove } from 'firebase/database';
+import { ref, onValue, set, push, update, get, remove, runTransaction } from 'firebase/database';
 import { useAuth } from './auth-provider';
 import { 
   format, 
@@ -41,6 +42,8 @@ type PlannerContextType = {
   addPlannerEvent: (eventData: Omit<PlannerEvent, 'id'>) => Promise<{ emailWarning?: string }>;
   updatePlannerEvent: (event: PlannerEvent) => void;
   deletePlannerEvent: (eventId: string, day: string) => Promise<void>;
+  stopPlannerEventFromToday: (eventId: string, fromDay?: string) => Promise<void>;
+  permanentlyDeletePlannerEvent: (eventId: string) => Promise<void>;
   getExpandedPlannerEvents: (start: Date, end: Date, userId: string) => { eventDate: Date, event: PlannerEvent }[];
   addPlannerEventComment: (plannerUserId: string, day: string, eventId: string, text: string) => Promise<void>;
   deletePlannerDailyNote: (plannerUserId: string, day: string, commentId: string) => void;
@@ -290,6 +293,29 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         });
     }, [user, plannerEvents]);
 
+    const stopPlannerEventFromToday = useCallback(async (eventId: string, fromDay?: string) => {
+        const event = plannerEvents.find(e => e.id === eventId);
+        if (!user || !event || (event.creatorId !== user.id && user.role !== 'Admin')) throw new Error('Only the creator or an admin can stop this task.');
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const cutoff = fromDay || today;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(cutoff) || Number.isNaN(parseISO(cutoff).getTime())) throw new Error('A valid start date is required.');
+        // Only write the cutoff marker. Occurrences, statuses and conversations are retained.
+        await runTransaction(ref(rtdb, 'plannerEvents/' + eventId + '/stoppedFrom'), current => {
+            if (current?.date && current.date <= cutoff) return current;
+            return { date: cutoff, stoppedBy: user.id, stoppedAt: new Date().toISOString() };
+        }, { applyLocally: false });
+    }, [user, plannerEvents]);
+
+    const permanentlyDeletePlannerEvent = useCallback(async (eventId: string) => {
+        if (!user) throw new Error('Please sign in.');
+        const snapshot = await get(ref(rtdb, 'plannerEvents/'+eventId));
+        const event = snapshot.val() as PlannerEvent | null;
+        if (!event) throw new Error('This task no longer exists.');
+        if (event.creatorId !== user.id && user.role !== 'Admin') throw new Error('Only the creator or an admin can permanently delete this task.');
+        const [days, people] = await Promise.all([get(ref(rtdb,'dailyPlannerComments')),get(ref(rtdb,'users'))]);
+        await update(ref(rtdb),plannerDeletionUpdates(eventId,days.val()||{},people.val()||{}));
+    }, [user]);
+
     const getExpandedPlannerEvents = useCallback((startDate: Date, endDate: Date, userId: string): { eventDate: Date, event: PlannerEvent }[] => {
         const userEvents = plannerEvents.filter(e => e.userId === userId);
         const expanded: { eventDate: Date; event: PlannerEvent }[] = [];
@@ -300,7 +326,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
             userEvents.forEach(event => {
                 const eventStartDate = startOfDay(parseISO(event.date));
                 
-                if (isBefore(day, eventStartDate) || event.removedOccurrences?.[format(day, 'yyyy-MM-dd')]) return;
+                if (isBefore(day, eventStartDate) || event.removedOccurrences?.[format(day, 'yyyy-MM-dd')] || (event.stoppedFrom?.date && format(day, 'yyyy-MM-dd') >= event.stoppedFrom.date)) return;
 
                 let match = false;
                 switch(event.frequency) {
@@ -1271,7 +1297,7 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
     const contextValue: PlannerContextType = {
         plannerEvents, jobSchedules, dailyPlannerComments, jobRecords, jobRecordPlants, vehicleUsageRecords, timesheets, jobProgress, documentMovements,
         trackerNotificationCount,
-        addPlannerEvent, updatePlannerEvent, deletePlannerEvent,
+        addPlannerEvent, updatePlannerEvent, deletePlannerEvent, stopPlannerEventFromToday, permanentlyDeletePlannerEvent,
         getExpandedPlannerEvents, addPlannerEventComment,
         deletePlannerDailyNote, lockDailyPlanning, unlockDailyPlanning,
         markSinglePlannerCommentAsRead, dismissPendingUpdate,

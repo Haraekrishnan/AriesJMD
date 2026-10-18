@@ -1,5 +1,6 @@
 
 'use client';
+import { equipmentStatusLabel } from '@/components/equipment/equipment-status-label';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -85,7 +86,7 @@ export default function WeldingMachineTable({ items, onEdit }: WeldingMachineTab
                         <TableCell>{item.serialNumber}</TableCell>
                         <TableCell>{item.ariesId || 'N/A'}</TableCell>
                         <TableCell>{project?.name || 'N/A'}</TableCell>
-                        <TableCell><Badge variant={getStatusVariant(item.status)}>{item.status}</Badge></TableCell>
+                        <TableCell><Badge variant={getStatusVariant(item.status)}>{equipmentStatusLabel(item.status)}</Badge></TableCell>
                         <TableCell className={cn(getDateStyles(item.tpInspectionDueDate))}>
                           {item.tpInspectionDueDate ? format(new Date(item.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}
                         </TableCell>

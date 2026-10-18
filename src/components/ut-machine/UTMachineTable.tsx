@@ -1,5 +1,6 @@
 
 'use client';
+import { equipmentStatusLabel } from '@/components/equipment/equipment-status-label';
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
@@ -114,7 +115,7 @@ export default function UTMachineTable({ items, onEdit, onLogManager }: UTMachin
                         <TableCell className={cn(getDateStyles(machine.tpInspectionDueDate))}>
                           {machine.tpInspectionDueDate ? format(new Date(machine.tpInspectionDueDate), 'dd-MM-yyyy') : 'N/A'}
                         </TableCell>
-                        <TableCell><Badge variant={getStatusVariant(machine.status)}>{machine.status}</Badge></TableCell>
+                        <TableCell><Badge variant={getStatusVariant(machine.status)}>{equipmentStatusLabel(machine.status)}</Badge></TableCell>
                         <TableCell>
                           {machine.certificateUrl && (
                               <Tooltip>

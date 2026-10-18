@@ -1,5 +1,6 @@
 
 'use client';
+import { equipmentStatusLabel } from '@/components/equipment/equipment-status-label';
 import { useMemo } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -107,7 +108,7 @@ export default function MobileSimTable({ items, onEdit }: MobileSimTableProps) {
                             )}
                         </TableCell>
                         <TableCell>{project?.name}</TableCell>
-                        <TableCell><Badge variant={getStatusVariant(item.status)}>{item.status}</Badge></TableCell>
+                        <TableCell><Badge variant={getStatusVariant(item.status)}>{equipmentStatusLabel(item.status)}</Badge></TableCell>
                         <TableCell className="max-w-xs truncate">{item.remarks || 'N/A'}</TableCell>
                         {can.manage_equipment_status && (
                         <TableCell className="text-right">

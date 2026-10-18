@@ -1,6 +1,7 @@
 
 
 'use client';
+import { equipmentStatusLabel } from '@/components/equipment/equipment-status-label';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -104,11 +105,11 @@ export default function AddUTMachineDialog({ isOpen, setIsOpen }: AddUTMachineDi
               
               <div className="grid grid-cols-2 gap-4">
                 <div><Label>Probe Details</Label><Input {...form.register('probeDetails')} /></div>
-                <div><Label>Probe Status</Label><Controller control={form.control} name="probeStatus" render={({field}) => <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{componentStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>} /></div>
+                <div><Label>Probe Status</Label><Controller control={form.control} name="probeStatus" render={({field}) => <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{componentStatusOptions.map(s => <SelectItem key={s} value={s}>{equipmentStatusLabel(s)}</SelectItem>)}</SelectContent></Select>} /></div>
               </div>
                <div className="grid grid-cols-2 gap-4">
                 <div><Label>Cable Details</Label><Input {...form.register('cableDetails')} /></div>
-                <div><Label>Cable Status</Label><Controller control={form.control} name="cableStatus" render={({field}) => <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{componentStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>} /></div>
+                <div><Label>Cable Status</Label><Controller control={form.control} name="cableStatus" render={({field}) => <Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{componentStatusOptions.map(s => <SelectItem key={s} value={s}>{equipmentStatusLabel(s)}</SelectItem>)}</SelectContent></Select>} /></div>
               </div>
               
               <div>
@@ -121,7 +122,7 @@ export default function AddUTMachineDialog({ isOpen, setIsOpen }: AddUTMachineDi
                     <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger><SelectValue placeholder="Select status..."/></SelectTrigger>
                         <SelectContent>
-                            {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            {statusOptions.map(s => <SelectItem key={s} value={s}>{equipmentStatusLabel(s)}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 )}/>

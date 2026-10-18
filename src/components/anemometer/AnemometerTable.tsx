@@ -1,4 +1,5 @@
 'use client';
+import { equipmentStatusLabel } from '@/components/equipment/equipment-status-label';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { useInventory } from '@/contexts/inventory-provider';
@@ -85,7 +86,7 @@ export default function AnemometerTable({ items, onEdit }: AnemometerTableProps)
                         <TableCell><p className="font-medium">{item.make}</p><p className="text-xs text-muted-foreground">{item.model}</p></TableCell>
                         <TableCell>{item.serialNumber}</TableCell>
                         <TableCell>{project?.name || 'N/A'}</TableCell>
-                        <TableCell><Badge variant={getStatusVariant(item.status)}>{item.status}</Badge></TableCell>
+                        <TableCell><Badge variant={getStatusVariant(item.status)}>{equipmentStatusLabel(item.status)}</Badge></TableCell>
                         <TableCell className={cn(getDateStyles(item.calibrationDueDate))}>
                             {item.calibrationDueDate ? format(new Date(item.calibrationDueDate), 'dd-MM-yyyy') : 'N/A'}
                         </TableCell>

@@ -1,5 +1,6 @@
 
 'use client';
+import { equipmentStatusLabel } from '@/components/equipment/equipment-status-label';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -67,7 +68,7 @@ export default function DigitalCameraTable({ items, onEdit }: DigitalCameraTable
                         <TableCell><p className="font-medium">{item.make}</p><p className="text-xs text-muted-foreground">{item.model}</p></TableCell>
                         <TableCell>{item.serialNumber}</TableCell>
                         <TableCell>{project?.name || 'N/A'}</TableCell>
-                        <TableCell><Badge variant={getStatusVariant(item.status)}>{item.status}</Badge></TableCell>
+                        <TableCell><Badge variant={getStatusVariant(item.status)}>{equipmentStatusLabel(item.status)}</Badge></TableCell>
                         <TableCell className="max-w-xs truncate">{item.remarks || 'N/A'}</TableCell>
                         {can.manage_equipment_status && (
                         <TableCell className="text-right">

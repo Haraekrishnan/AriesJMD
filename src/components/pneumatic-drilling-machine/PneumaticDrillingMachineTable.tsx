@@ -1,5 +1,6 @@
 
 'use client';
+import { equipmentStatusLabel } from '@/components/equipment/equipment-status-label';
 import { useAuth } from '@/contexts/auth-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { useInventory } from '@/contexts/inventory-provider';
@@ -70,7 +71,7 @@ export default function PneumaticDrillingMachineTable({ items, onEdit }: Pneumat
                         <TableCell>{item.serialNumber}</TableCell>
                         <TableCell>{item.ariesId || 'N/A'}</TableCell>
                         <TableCell>{project?.name || 'N/A'}</TableCell>
-                        <TableCell><Badge variant={getStatusVariant(item.status)}>{item.status}</Badge></TableCell>
+                        <TableCell><Badge variant={getStatusVariant(item.status)}>{equipmentStatusLabel(item.status)}</Badge></TableCell>
                         <TableCell className="max-w-xs truncate">{item.remarks || 'N/A'}</TableCell>
                         {can.manage_equipment_status && (
                         <TableCell className="text-right">

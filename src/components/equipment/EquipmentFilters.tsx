@@ -1,5 +1,6 @@
 
 'use client';
+import { equipmentStatusLabel } from '@/components/equipment/equipment-status-label';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -53,7 +54,7 @@ export default function EquipmentFilters({ onFiltersChange }: EquipmentFiltersPr
                     <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Filter by status..." /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Statuses</SelectItem>
-                        {uniqueStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        {uniqueStatusOptions.map(s => <SelectItem key={s} value={s}>{equipmentStatusLabel(s)}</SelectItem>)}
                     </SelectContent>
                 </Select>
                 <Select value={filters.projectId} onValueChange={(v) => handleFilterChange('projectId', v)}>

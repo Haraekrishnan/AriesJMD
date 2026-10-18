@@ -1,5 +1,7 @@
 
 'use client';
+import { equipmentStatusLabel } from '@/components/equipment/equipment-status-label';
+import editStyles from '@/components/equipment/equipment-edit.module.css';
 import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -78,65 +80,52 @@ export default function EditDftMachineDialog({ isOpen, setIsOpen, machine }: Edi
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-lg" onInteractOutside={(e) => e.preventDefault()}>
-        <DialogHeader>
+      <DialogContent className={editStyles.dialog} onInteractOutside={(e) => e.preventDefault()}>
+        <DialogHeader className={editStyles.header}>
           <DialogTitle>Edit DFT Machine</DialogTitle>
           <DialogDescription>Update details for {machine.machineName} (SN: {machine.serialNumber}).</DialogDescription>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <ScrollArea className="h-96 pr-6">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>Machine Name</Label><Input {...form.register('machineName')} />{form.formState.errors.machineName && <p className="text-xs text-destructive">{form.formState.errors.machineName.message}</p>}</div>
-                <div><Label>Serial Number</Label><Input {...form.register('serialNumber')} />{form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}</div>
-              </div>
-              <div><Label>Aries ID</Label><Input {...form.register('ariesId')} /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+        <form onSubmit={form.handleSubmit(onSubmit)} className={editStyles.form}><div className={editStyles.body}><section className={editStyles.section} aria-label="Equipment identity"><h3>Equipment identity</h3><div className={editStyles.fields}><div className={editStyles.field}><div><Label>Machine Name</Label><Input {...form.register('machineName')} />{form.formState.errors.machineName && <p className="text-xs text-destructive">{form.formState.errors.machineName.message}</p>}</div></div>
+<div className={editStyles.field}><div><Label>Serial Number</Label><Input {...form.register('serialNumber')} />{form.formState.errors.serialNumber && <p className="text-xs text-destructive">{form.formState.errors.serialNumber.message}</p>}</div></div>
+<div className={editStyles.field}><div><Label>Aries ID</Label><Input {...form.register('ariesId')} /></div></div></div></section>
+<section className={editStyles.section} aria-label="Assignment & status"><h3>Assignment & status</h3><div className={editStyles.fields}><div className={editStyles.field}><div>
                     <Label>Project / Location</Label>
                     <Controller control={form.control} name="projectId" render={({ field }) => (<Select onValueChange={field.onChange} value={field.value}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select>)}/>{form.formState.errors.projectId && <p className="text-xs text-destructive">{form.formState.errors.projectId.message}</p>}
-                </div>
-                <div><Label>Unit</Label><Input {...form.register('unit')} />{form.formState.errors.unit && <p className="text-xs text-destructive">{form.formState.errors.unit.message}</p>}</div>
-              </div>
-              <div><Label>Calibration Due Date</Label><Controller name="calibrationDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />{form.formState.errors.calibrationDueDate && <p className="text-xs text-destructive">{form.formState.errors.calibrationDueDate.message}</p>}</div>
-              <div><Label>TP Inspection Due Date (Optional)</Label><Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label>Probe Details</Label><Input {...form.register('probeDetails')} />{form.formState.errors.probeDetails && <p className="text-xs text-destructive">{form.formState.errors.probeDetails.message}</p>}</div>
-                <div><Label>Cable Details</Label><Input {...form.register('cableDetails')} />{form.formState.errors.cableDetails && <p className="text-xs text-destructive">{form.formState.errors.cableDetails.message}</p>}</div>
-              </div>
-              <div>
-                <Label>Certificate URL</Label>
-                <Input {...form.register('certificateUrl')} placeholder="https://..." />
-                {form.formState.errors.certificateUrl && <p className="text-xs text-destructive">{form.formState.errors.certificateUrl.message}</p>}
-              </div>
-              <div><Label>Status</Label>
+                </div></div>
+<div className={editStyles.field}><div><Label>Unit</Label><Input {...form.register('unit')} />{form.formState.errors.unit && <p className="text-xs text-destructive">{form.formState.errors.unit.message}</p>}</div></div>
+<div className={editStyles.field}><div><Label>Status</Label>
                 <Controller control={form.control} name="status" render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
                         <SelectTrigger><SelectValue placeholder="Select status..."/></SelectTrigger>
                         <SelectContent>
-                            {statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            {statusOptions.map(s => <SelectItem key={s} value={s}>{equipmentStatusLabel(s)}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 )}/>
                 {form.formState.errors.status && <p className="text-xs text-destructive">{form.formState.errors.status.message}</p>}
-              </div>
-                {watchStatus === 'Moved to another project' && (
+              </div></div>
+<div className={editStyles.field}>{watchStatus === 'Moved to another project' && (
                     <div>
                         <Label>Moved To Project (Optional)</Label>
                         <Input {...form.register('movedToProjectId')} placeholder="Enter destination project..." />
                     </div>
-                )}
-                 <div>
+                )}</div></div></section>
+<section className={editStyles.section} aria-label="Inspection & certificates"><h3>Inspection & certificates</h3><div className={editStyles.fields}><div className={editStyles.field}><div><Label>Calibration Due Date</Label><Controller name="calibrationDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value} onChange={field.onChange} />} />{form.formState.errors.calibrationDueDate && <p className="text-xs text-destructive">{form.formState.errors.calibrationDueDate.message}</p>}</div></div>
+<div className={editStyles.field}><div><Label>TP Inspection Due Date (Optional)</Label><Controller name="tpInspectionDueDate" control={form.control} render={({ field }) => <DatePickerInput value={field.value ?? undefined} onChange={field.onChange} />} /></div></div>
+<div className={editStyles.wideField}><div>
+                <Label>Certificate URL</Label>
+                <Input {...form.register('certificateUrl')} placeholder="https://..." />
+                {form.formState.errors.certificateUrl && <p className="text-xs text-destructive">{form.formState.errors.certificateUrl.message}</p>}
+              </div></div></div></section>
+<section className={editStyles.section} aria-label="Probe & cable"><h3>Probe & cable</h3><div className={editStyles.fields}><div className={editStyles.field}><div><Label>Probe Details</Label><Input {...form.register('probeDetails')} />{form.formState.errors.probeDetails && <p className="text-xs text-destructive">{form.formState.errors.probeDetails.message}</p>}</div></div>
+<div className={editStyles.field}><div><Label>Cable Details</Label><Input {...form.register('cableDetails')} />{form.formState.errors.cableDetails && <p className="text-xs text-destructive">{form.formState.errors.cableDetails.message}</p>}</div></div></div></section>
+<section className={editStyles.section} aria-label="Remarks"><h3>Remarks</h3><div className={editStyles.fields}><div className={editStyles.wideField}><div>
                     <Label>Remarks</Label>
                     <Textarea {...form.register('remarks')} />
-                </div>
-            </div>
-          </ScrollArea>
-          <DialogFooter className="pt-4">
+                </div></div></div></section></div><DialogFooter className={editStyles.footer}>
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
             <Button type="submit">Save Changes</Button>
-          </DialogFooter>
-        </form>
+          </DialogFooter></form>
       </DialogContent>
     </Dialog>
   );

@@ -59,6 +59,7 @@ export default function EventInstanceDialog({
       .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
   }, [dailyPlannerComments, dayCommentId, event.id]);
 
+  const unreadCount = comments.filter(c=>user && c.userId!==user.id && !c.viewedBy?.[user.id]).length;
   const creator = users.find((u) => u.id === event.creatorId);
   const isOwner = user?.id === event.creatorId || user?.role === 'Admin';
 
@@ -130,7 +131,7 @@ export default function EventInstanceDialog({
             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2 flex items-center gap-2">
               <MessageSquare className="h-3 w-3" /> Event Conversation
             </h4>
-            <Button variant="ghost" size="sm" className="self-end mb-2" onClick={markConversationRead}>Mark conversation as read</Button>
+            <Button variant="ghost" size="sm" className="self-end mb-2" disabled={!unreadCount} onClick={markConversationRead}>{unreadCount ? `Mark ${unreadCount} new update${unreadCount===1?'':'s'} as read` : 'Conversation read'}</Button>
             
             <ScrollArea className="h-[280px] border rounded-lg bg-slate-50/50 p-3">
               <div className="space-y-3">
@@ -145,7 +146,7 @@ export default function EventInstanceDialog({
                         </Avatar>
                         <div className="flex-1 bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-200">
                           <div className="flex justify-between items-baseline mb-0.5">
-                            <span className="text-[9px] font-black uppercase text-slate-500">{author?.name || 'Former user'}{comment.userId === event.creatorId ? ' · Delegator' : ''}</span>
+                            <span className="text-[9px] font-black uppercase text-slate-500">{author?.name || 'Former user'}{author?.role==='Admin' ? ' · Admin' : comment.userId === event.creatorId ? ' · Creator' : ''}{user && comment.userId!==user.id && !comment.viewedBy?.[user.id] && <span className="ml-2 rounded bg-blue-100 px-2 py-1 text-blue-700">New</span>}</span>
                             <span className="text-[8px] font-bold text-slate-400">
                               {formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}
                             </span>
