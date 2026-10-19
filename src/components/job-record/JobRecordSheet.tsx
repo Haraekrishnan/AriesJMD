@@ -1159,6 +1159,7 @@ export default function JobRecordSheet() {
                                                         )}
                                                         <input
                                                             id={`${profile.id}-${day}-status`}
+                                                            data-job-code={code}
                                                             type="text"
                                                             list="jobcodes-datalist"
                                                             value={code}

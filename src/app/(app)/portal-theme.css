@@ -20,7 +20,7 @@ body[data-portal-theme='main'], .main-portal {
 .portal-content [data-portal-card] { border-radius:10px; border-color:var(--portal-edge); box-shadow:0 1px 2px #0f172a08; }
 .portal-content table thead { background:#f8fafc; color:#64748b; }
 .portal-content table th { font-weight:500; }
-.portal-content :is(input:disabled,textarea:disabled,button[role='combobox']:disabled) { opacity:1; color:#475569; background:#f8fafc; }
+.portal-content :is(input:disabled:not([data-job-code]),textarea:disabled,button[role='combobox']:disabled) { opacity:1; color:#475569; background:#f8fafc; }
 .main-portal :is(button,a):focus-visible, body[data-portal-theme='main'] [role='dialog'] :is(button,a):focus-visible { outline:2px solid #2563eb; outline-offset:3px; }
 .portal-navigation { background:#101d35; color:#cbd5e1; border-color:#26344b; }
 .portal-navigation > div { border-color:#26344b; }
