@@ -1,28 +1,15 @@
-
 'use client';
-
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { usePlanner } from '@/contexts/planner-provider';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Textarea } from '@/components/ui/textarea';
-import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { Send, MessageSquare, Clock, User, Edit } from 'lucide-react';
-import type { PlannerEvent, Comment } from '@/lib/types';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { format, parseISO, isValid } from 'date-fns';
+import { Send, FileText, CheckCircle2, Edit, CalendarDays, Repeat2, User, Folder } from 'lucide-react';
+import type { PlannerEvent } from '@/lib/types';
 import { ref, update } from 'firebase/database';
 import { rtdb } from '@/lib/rtdb';
 import { useToast } from '@/hooks/use-toast';
+import styles from './task-history.module.css';
 
 interface EventInstanceDialogProps {
   isOpen: boolean;
@@ -42,10 +29,12 @@ export default function EventInstanceDialog({
   onEdit,
 }: EventInstanceDialogProps) {
   const { user, users } = useAuth();
-  const { dailyPlannerComments, addPlannerEventComment, markSinglePlannerCommentAsRead } = usePlanner();
+  const { dailyPlannerComments, addPlannerEventComment } = usePlanner();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [sending, setSending] = useState(false);
+  const sendLock = useRef(false);
+  const [markingRead, setMarkingRead] = useState(false);
 
   const dayStr = format(date, 'yyyy-MM-dd');
   const dayCommentId = `${dayStr}_${plannerUserId}`;
@@ -64,7 +53,8 @@ export default function EventInstanceDialog({
   const isOwner = user?.id === event.creatorId || user?.role === 'Admin';
 
   const markConversationRead = async () => {
-    if (!user) return;
+    if (!user || markingRead) return;
+    setMarkingRead(true);
     const updates: Record<string, boolean> = {};
     comments.filter(c => c.userId !== user.id && !c.viewedBy?.[user.id]).forEach(c => {
       updates['dailyPlannerComments/' + dayCommentId + '/comments/' + c.id + '/viewedBy/' + user.id] = true;
@@ -72,9 +62,11 @@ export default function EventInstanceDialog({
     if (dayStr === format(parseISO(event.date), 'yyyy-MM-dd')) updates['plannerEvents/' + event.id + '/viewedBy/' + user.id] = true;
     try { if (Object.keys(updates).length) await update(ref(rtdb), updates); }
     catch { toast({variant:'destructive',title:'Could not mark notification as read. Please try again.'}); }
+    finally { setMarkingRead(false); }
   };
   const handleSendComment = async () => {
-    if (!newComment.trim() || sending) return;
+    if (!user || !newComment.trim() || sendLock.current) return;
+    sendLock.current = true;
     setSending(true);
     try {
       await addPlannerEventComment(plannerUserId, dayStr, event.id, newComment.trim());
@@ -82,134 +74,40 @@ export default function EventInstanceDialog({
       toast({ title: 'Reply saved' });
     } catch {
       toast({ variant: 'destructive', title: 'Reply could not be saved', description: 'Your draft is still here. Please try again.' });
-    } finally { setSending(false); }
+    } finally { sendLock.current = false; setSending(false); }
   };
 
 
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-xl flex flex-col max-h-[90vh]">
-        <DialogHeader className="border-b pb-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest border-primary/30">
-                  {event.frequency}
-                </Badge>
-                <span className="text-[10px] font-bold text-muted-foreground">
-                  {format(date, 'PPPP')}
-                </span>
-              </div>
-              <DialogTitle className="text-xl font-black uppercase tracking-tight">
-                {event.title}
-              </DialogTitle>
-            </div>
-          </div>
-          <DialogDescription className="text-sm text-foreground mt-3 whitespace-pre-wrap break-words max-h-40 overflow-y-auto rounded-md border bg-muted/30 p-3">
-            <span className="block text-xs font-semibold text-muted-foreground mb-1">Planning description</span>
-            {event.description || "No description provided for this event."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-hidden flex flex-col py-4 gap-4">
-          {/* INFO SECTION */}
-          <div className="flex items-center gap-4 p-3 bg-muted/30 rounded-lg border border-dashed">
-            <div className="flex items-center gap-2">
-               <Avatar className="h-8 w-8 border">
-                <AvatarImage src={creator?.avatar} />
-                <AvatarFallback>{creator?.name?.[0]}</AvatarFallback>
-              </Avatar>
-              <div className="text-[10px]">
-                <p className="font-black text-slate-500 uppercase leading-none">Created By</p>
-                <p className="font-bold text-black">{creator?.name}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* CHAT SECTION */}
-          <div className="flex-1 flex flex-col min-h-0">
-            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-2 flex items-center gap-2">
-              <MessageSquare className="h-3 w-3" /> Event Conversation
-            </h4>
-            <Button variant="ghost" size="sm" className="self-end mb-2" disabled={!unreadCount} onClick={markConversationRead}>{unreadCount ? `Mark ${unreadCount} new update${unreadCount===1?'':'s'} as read` : 'Conversation read'}</Button>
-            
-            <ScrollArea className="h-[280px] border rounded-lg bg-slate-50/50 p-3">
-              <div className="space-y-3">
-                {comments.length > 0 ? (
-                  comments.map((comment) => {
-                    const author = users.find((u) => u.id === comment.userId);
-                    return (
-                      <div key={comment.id} className="flex gap-2">
-                        <Avatar className="h-6 w-6 border shrink-0">
-                          <AvatarImage src={author?.avatar} />
-                          <AvatarFallback className="text-[8px]">{author?.name?.[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 bg-white dark:bg-slate-800 p-2 rounded shadow-sm border border-slate-200">
-                          <div className="flex justify-between items-baseline mb-0.5">
-                            <span className="text-[9px] font-black uppercase text-slate-500">{author?.name || 'Former user'}{author?.role==='Admin' ? ' · Admin' : comment.userId === event.creatorId ? ' · Creator' : ''}{user && comment.userId!==user.id && !comment.viewedBy?.[user.id] && <span className="ml-2 rounded bg-blue-100 px-2 py-1 text-blue-700">New</span>}</span>
-                            <span className="text-[8px] font-bold text-slate-400">
-                              {formatDistanceToNow(parseISO(comment.date), { addSuffix: true })}
-                            </span>
-                          </div>
-                          <p className="text-sm whitespace-pre-wrap break-words text-foreground leading-relaxed">
-                            {comment.text}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-10 opacity-30 text-center">
-                    <MessageSquare className="h-8 w-8 mb-2" />
-                    <p className="text-[10px] font-black uppercase tracking-widest">No replies yet</p>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </div>
-
-          {/* INPUT SECTION */}
-          <div className="relative mt-2">
-            <Textarea
-              placeholder="Add a reply or update..."
-              className="min-h-[60px] pr-12 text-xs font-bold border-2 focus-visible:ring-primary/20"
-              value={newComment}
-              disabled={sending}
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendComment();
-                }
-              }}
-            />
-            <Button
-              size="icon"
-              className="absolute right-2 bottom-2 h-8 w-8 bg-primary hover:bg-primary/90 shadow-sm"
-              aria-label="Send reply"
-              disabled={sending || !newComment.trim()}
-              onClick={handleSendComment}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        <DialogFooter className="border-t pt-4 flex sm:justify-between items-center w-full">
-          <div className="flex gap-2">
-            {isOwner && (
-              <>
-                <Button variant="outline" size="sm" className="h-8 px-3 font-bold text-xs" onClick={() => { onEdit(event); setIsOpen(false); }}>
-                  <Edit className="mr-2 h-3.5 w-3.5" /> Edit Master
-                </Button>
-              </>
-            )}
-          </div>
-          <Button variant="secondary" size="sm" className="h-8 px-4 font-bold text-xs" onClick={() => setIsOpen(false)}>
-            Close
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+  const assignee = users.find(u=>u.id===plannerUserId);
+  const repeatLabel = event.frequency.split('-').map(word=>word.charAt(0).toUpperCase()+word.slice(1)).join(' ');
+  const timestamp = (value:string, pattern:string) => {const parsed=parseISO(value);return isValid(parsed)?format(parsed,pattern):'Unknown';};
+  return <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <DialogContent className={styles.dialog} overlayClassName={styles.overlay}>
+      <header className={styles.header}><FileText size={25}/><DialogTitle className={styles.title}>Task history &amp; updates</DialogTitle><DialogDescription className="sr-only">Task details, dated remarks, read status and replies for {event.title}.</DialogDescription></header>
+      <div className={styles.body}>
+        <section className={styles.context} aria-label="Task details">
+          <h2>{event.title}</h2>
+          <dl className={styles.metadata}>
+            <div><dt>Task date</dt><dd><CalendarDays size={18}/>{format(date,'dd MMM yyyy')}</dd></div>
+            <div><dt>Repeat</dt><dd><Repeat2 size={18}/>{repeatLabel}</dd></div>
+            <div><dt>Created by</dt><dd><User size={18}/>{creator?.name||'Former user'}</dd></div>
+            <div><dt>Assigned to</dt><dd><User size={18}/>{assignee?.name||'Former user'}</dd></div>
+            <div><dt>Category</dt><dd><Folder size={18}/><span className={styles.category}>{event.category||'General'}</span></dd></div>
+          </dl>
+          <h3>Planning description</h3><p className={styles.description}>{event.description||'No description provided for this event.'}</p>
+        </section>
+        <section className={styles.register} aria-label="Update register">
+          <div className={styles.registerHeader}><h2>Update register <span>{comments.length} {comments.length===1?'entry':'entries'}</span></h2><div><span className={styles.unreadCount} data-unread={unreadCount>0}>{unreadCount>0?unreadCount+' unread update'+(unreadCount===1?'':'s'):'Conversation read'}</span><button className={styles.outline} disabled={!unreadCount||markingRead} onClick={markConversationRead}>{markingRead?'Marking…':'Mark as read'}</button></div></div>
+          <div className={styles.tableWrap} tabIndex={0} role="region" aria-label="Task update history"><table><thead><tr><th scope="col">#</th><th scope="col">Date &amp; time</th><th scope="col">Updated by</th><th scope="col">Role</th><th scope="col">Remark / Update</th><th scope="col">Read status</th></tr></thead><tbody>{comments.map((comment,index)=>{
+            const author=users.find(u=>u.id===comment.userId);
+            const isUnread=!!user&&comment.userId!==user.id&&!comment.viewedBy?.[user.id];
+            const own=comment.userId===user?.id;
+            return <tr key={comment.id} data-unread={isUnread}><td>{index+1}</td><td className={styles.date}><time dateTime={comment.date}>{timestamp(comment.date,'dd MMM yyyy')}<small>{timestamp(comment.date,'hh:mm a')}</small></time></td><td><div className={styles.author}><span className={styles.avatar}>{(author?.name||'Former user').split(' ').map(n=>n[0]).slice(0,2).join('')}</span><span>{author?.name||'Former user'}</span></div></td><td><span className={styles.role}>{author?.role||'—'}</span></td><td className={styles.remark}>{comment.text}</td><td><span className={styles.readState} data-unread={isUnread}>{isUnread?<i/>:<CheckCircle2 size={16}/>}<span>{isUnread?'New':own?'Your update':'Read'}</span></span></td></tr>;
+          })}{!comments.length&&<tr><td colSpan={6} className={styles.empty}>No updates yet. Add the first remark below.</td></tr>}</tbody></table></div>
+          <div className={styles.tableFooter}><span>Showing all {comments.length} updates · Oldest first</span><span>Read status is for your account</span></div>
+        </section>
+      </div>
+      <section className={styles.composer} aria-label="Add a task update"><div className={styles.composerTitle}><label htmlFor="task-history-reply">Add remark / update</label><span>Posting as {user?.name||'your account'}</span></div><textarea id="task-history-reply" placeholder="Write your remark, reply or progress update…" rows={3} value={newComment} disabled={sending} onChange={e=>setNewComment(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)&&!e.nativeEvent.isComposing){e.preventDefault();void handleSendComment();}}}/><footer className={styles.footer}><div>{isOwner&&<button className={styles.outline} onClick={()=>{onEdit(event);setIsOpen(false);}}><Edit size={17}/>Edit Master</button>}</div><div><button className={styles.secondary} onClick={()=>setIsOpen(false)}>Close</button><button className={styles.primary} disabled={!user||sending||!newComment.trim()} onClick={handleSendComment}><Send size={17}/>{sending?'Posting…':'Post update'}</button></div></footer></section>
+    </DialogContent>
+  </Dialog>;
 }
