@@ -3,6 +3,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-provider';
 import { ALL_PLANNERS, plannerVisibleUsers } from '@/components/planner/planner-visibility';
 import CreateEventDialog from '@/components/planner/create-event-dialog';
+import styles from '@/components/planner/planner-dashboard.module.css';
 import PlannerDashboard from '@/components/planner/planner-dashboard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -41,24 +42,24 @@ export default function PlannerPage() {
 
     return (
         <div 
-          className="flex flex-col gap-6"
+          className={styles.page}
           
         >
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Planner</h1>
-                    <p className="text-muted-foreground font-medium">Plan, assign, and track daily tasks, schedules, and updates.</p>
+                    <p className="text-muted-foreground font-medium">Plan work, track progress and stay updated.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
                     {(
                         <div className="flex items-center gap-2">
-                            <Label htmlFor="user-select" className="text-xs font-black uppercase tracking-widest text-slate-500">View Planner of:</Label>
+                            <Label htmlFor="user-select" className="sr-only">View Planner of:</Label>
                             <Select value={safeSelectedUserId} onValueChange={handleUserChange}>
                                 <SelectTrigger className="w-[200px] h-9 font-bold" id="user-select">
                                     <SelectValue placeholder="Select an employee" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value={ALL_PLANNERS}>All</SelectItem>
+                                    <SelectItem value={ALL_PLANNERS}>All team members</SelectItem>
                                     {visibleUsers.map((u, index) => (
                                         <SelectItem key={`${u.id}-${index}`} value={u.id} className="font-bold">{u.name}</SelectItem>
                                     ))}

@@ -104,7 +104,7 @@ export default function CreateEventDialog({ isDelegating = false, isPlanning = f
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button>
+        <Button variant={isDelegating ? "outline" : "default"} className={isDelegating ? "border-blue-200 text-blue-600" : undefined}>
           {isDelegating ? <Users className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
           {buttonText}
         </Button>
