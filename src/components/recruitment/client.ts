@@ -40,6 +40,6 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
       }catch(error){failure=error instanceof Error?error.message:failure;return;}
     },{applyLocally:false});
     if(!result.committed)throw new Error(failure);
-    return {id} as T;
+    return {id,record:result.snapshot.val() as RecordEntry} as T;
   };
 }
