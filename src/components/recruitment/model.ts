@@ -16,14 +16,14 @@ export function validateCandidate(input:unknown):Candidate {
   } return out;
 }
 /**
- * Apply a version-checked change and append its immutable audit entry.
+ * Apply a version-checked change and append its audit entry.
  * @param {RecordEntry|null} previous Existing record or null for creation.
  * @param {Candidate} values Validated input fields.
  * @param {number} revision Version observed by the editor.
- * @param {object} actor Trusted server identity.
+ * @param {object} actor Current portal account.
  * @param {string} id Candidate identifier.
- * @param {string} auditId Server-generated audit identifier.
- * @param {string} at Server timestamp.
+ * @param {string} auditId Unique audit identifier.
+ * @param {string} at Database-clock-adjusted timestamp.
  * @return {RecordEntry} Updated record with complete audit history.
  */
 export function saveCandidate(previous:RecordEntry|null, values:Candidate, revision:number, actor:{id:string;name:string}, id:string, auditId:string, at:string):RecordEntry {

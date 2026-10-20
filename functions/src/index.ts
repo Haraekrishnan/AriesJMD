@@ -13,4 +13,4 @@
 // });
 
 
-export {recruitment} from "./recruitment";
+export {};
