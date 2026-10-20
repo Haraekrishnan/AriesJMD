@@ -17,6 +17,8 @@ export default function PermissionPicker({ value, onChange }: { value: string[];
       {filtered.map(permission => <label key={permission} htmlFor={`${id}-${permission}`} className={styles.permissionOption}>
         <input type="checkbox" id={`${id}-${permission}`} checked={value.includes(permission)} onChange={e => onChange(e.target.checked ? [...new Set([...value, permission])] : value.filter(p => p !== permission))} />
         <span>{permissionName(permission)}
+          {permission === 'view_recruitment_sheet' && <small>View recruitment candidates, change history and Excel exports.</small>}
+          {permission === 'manage_recruitment_sheet' && <small>Add and edit candidates. Includes View access. Admin has both permissions by default.</small>}
           {permission === 'view_job_schedule' && <small>View schedules for any date and download Excel / PDF. Does not allow creating or editing.</small>}
           {permission === 'manage_job_schedule' && <small>Create, edit, delete, lock and unlock schedules. Also allows viewing and downloads.</small>}
         </span>
@@ -26,3 +28,4 @@ export default function PermissionPicker({ value, onChange }: { value: string[];
     {value.includes('view_job_schedule') && value.includes('manage_job_schedule') && <p className="text-xs text-amber-700">Manage Job Schedule is also selected, so this role can edit. Uncheck it for view-only access.</p>}
   </div>;
 }
+

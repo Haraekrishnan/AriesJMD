@@ -12,3 +12,5 @@
 //   response.send("Hello from Firebase!");
 // });
 
+
+export {recruitment} from "./recruitment";

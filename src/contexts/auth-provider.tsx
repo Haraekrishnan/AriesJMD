@@ -113,6 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     for (const permission of ALL_PERMISSIONS) {
       canObject[permission] = permissions.includes(permission);
     }
+    canObject.manage_recruitment_sheet = user?.role === 'Admin' || canObject.manage_recruitment_sheet;
+    canObject.view_recruitment_sheet = canObject.manage_recruitment_sheet || canObject.view_recruitment_sheet;
     return canObject;
   }, [user, roles]);
 
@@ -532,3 +534,4 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+

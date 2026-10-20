@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { manpowerDuplicateGroups } from '@/components/manpower/manpower-duplicates';
 import { useState, useMemo } from 'react';
 import styles from '@/components/manpower/manpower-list.module.css';
@@ -226,6 +227,9 @@ export default function ManpowerListPage() {
         setIsExtendLeaveOpen(true);
     };
 
+    if (!can.manage_manpower_list && !can.view_manpower_list && !can.view_all && can.view_recruitment_sheet) {
+        return <Card><CardHeader><CardTitle>Recruitment Sheet</CardTitle><CardDescription>Manage recruitment candidates and follow-ups.</CardDescription></CardHeader><CardContent><Button asChild><Link href="/manpower-list/recruitment">Open Recruitment Sheet</Link></Button></CardContent></Card>;
+    }
     if (!can.manage_manpower_list && !can.view_manpower_list && !can.view_all) {
         return (
             <Card className="w-full max-w-md mx-auto mt-20">
@@ -249,6 +253,7 @@ export default function ManpowerListPage() {
                     <p className="text-muted-foreground">Manage manpower profiles and documentation.</p>
                 </div>
                 <div className={styles.toolbar}>
+                    {can.view_recruitment_sheet && <Button variant="outline" asChild><Link href="/manpower-list/recruitment"><Book className="mr-2 h-4 w-4"/>Recruitment Sheet</Link></Button>}
                     <ManpowerReportDownloads profiles={filteredProfiles} />
                     {can.manage_manpower_list && (
                         <>
@@ -480,4 +485,6 @@ export default function ManpowerListPage() {
         </div>
     );
 }
+
+
 

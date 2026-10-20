@@ -139,6 +139,8 @@ export const ALL_PERMISSIONS = [
   'manage_manpower',
   'manage_manpower_list',
   'view_manpower_list',
+  'view_recruitment_sheet',
+  'manage_recruitment_sheet',
   'approve_store_requests',
   'approve_transfer_requests',
   'manage_inventory',
@@ -1402,3 +1404,4 @@ export type JobSchedule = {
 };
 
 export type { EhsAudit, EhsAuditStatus, EhsIncident, EhsIncidentStatus, EhsRiskAssessment, EhsTraining, EhsSupportTicket, EhsContactInfo } from './ehs-types';
+

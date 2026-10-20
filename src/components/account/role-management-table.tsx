@@ -1,6 +1,7 @@
 'use client';
 import styles from './account.module.css';
 
+
 import React, { useState } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -38,7 +39,8 @@ export default function RoleManagementTable() {
 
     return (
         <div className="space-y-4">
-             <div className="flex justify-end">
+             <div className="flex justify-end gap-2 flex-wrap">
+
                 <Button onClick={() => setIsAddRoleDialogOpen(true)}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Role
@@ -116,3 +118,5 @@ export default function RoleManagementTable() {
         </div>
     );
 }
+
+
