@@ -14,12 +14,27 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
     if(!view)throw new Error('View Recruitment Sheet permission is required.');
     if(data.action==='list'){
       const snapshot=await get(ref(rtdb,recordsPath));
-      return Object.values(snapshot.val()||{}).map(entry=>{const {history,...record}=entry as RecordEntry;return record;}) as T;
+      return Object.values(snapshot.val()||{}).filter(entry=>!(entry as RecordEntry).deletedAt).map(entry=>{const {history,...record}=entry as RecordEntry;return record;}) as T;
     }
     if(data.action==='history'){
       if(typeof data.id!=='string'||!/^[-A-Za-z0-9_]{1,128}$/.test(data.id))throw new Error('Invalid candidate.');
       const snapshot=await get(ref(rtdb,`${recordsPath}/${data.id}/history`));
       return Object.values(snapshot.val()||{}).sort((a,b)=>(a as {at:string}).at.localeCompare((b as {at:string}).at)) as T;
+    }
+    if(data.action==='delete'){
+      if(user.role!=='Admin')throw new Error('Only Admin can delete recruitment rows.');
+      if(typeof data.id!=='string'||!/^[-A-Za-z0-9_]{1,128}$/.test(data.id)||!Number.isInteger(data.revision))throw new Error('Invalid candidate or revision.');
+      const recordRef=ref(rtdb,recordsPath+'/'+data.id);await get(recordRef);
+      const auditId=push(ref(rtdb,recordsPath+'/'+data.id+'/history')).key!;
+      const offset=(await get(ref(rtdb,'.info/serverTimeOffset'))).val();const at=new Date(Date.now()+(typeof offset==='number'?offset:0)).toISOString();
+      let failure='Candidate no longer exists.';
+      const result=await runTransaction(recordRef,(previous:RecordEntry|null)=>{
+        if(!previous||previous.deletedAt)return;
+        if(previous.revision!==data.revision){failure='This candidate was changed by another user. Refresh before deleting.';return;}
+        return {...previous,deletedAt:at,deletedBy:user.id,deletedByName:user.name,updatedAt:at,updatedBy:user.id,updatedByName:user.name,revision:previous.revision+1,history:{...previous.history,[auditId]:{id:auditId,action:'Deleted',actorId:user.id,actorName:user.name,at,changes:{deleted:{before:'No',after:'Yes'}}}}};
+      },{applyLocally:false});
+      if(!result.committed)throw new Error(failure);
+      return {id:data.id} as T;
     }
     if(data.action!=='save')throw new Error('Unknown recruitment action.');
     if(!manage)throw new Error('Manage Recruitment Sheet permission is required.');

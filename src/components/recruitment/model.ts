@@ -2,7 +2,7 @@ export const fields = ["name", "contact", "designation", "age", "experience", "s
 export type Field = typeof fields[number];
 export type Candidate = Record<Field, string>;
 export type Audit = {id:string;action:string;actorId:string;actorName:string;at:string;changes:Record<string, {before:string;after:string}>};
-export type RecordEntry = {id:string;values:Candidate;revision:number;createdBy:string;createdByName:string;createdAt:string;updatedBy:string;updatedByName:string;updatedAt:string;history:Record<string, Audit>};
+export type RecordEntry = {deletedAt?:string;deletedBy?:string;deletedByName?:string;id:string;values:Candidate;revision:number;createdBy:string;createdByName:string;createdAt:string;updatedBy:string;updatedByName:string;updatedAt:string;history:Record<string, Audit>};
 /**
  * Validate and whitelist editable sheet values before persistence.
  * @param {unknown} input Untrusted request fields.
@@ -27,6 +27,7 @@ export function validateCandidate(input:unknown):Candidate {
  * @return {RecordEntry} Updated record with complete audit history.
  */
 export function saveCandidate(previous:RecordEntry|null, values:Candidate, revision:number, actor:{id:string;name:string}, id:string, auditId:string, at:string):RecordEntry {
+  if (previous?.deletedAt) throw Error('This candidate has been deleted. Reload the sheet.');
   if ((previous?.revision||0)!==revision) throw Error("This candidate was changed by another user. Reload and try again."); const changes:Audit["changes"]={}; for (const key of fields) {
     const before=previous?.values[key]||""; if (before!==values[key])changes[key]={before, after: values[key]};
   } if (previous&&!Object.keys(changes).length) return previous; const audit={id: auditId, action: previous?"Updated":"Created", actorId: actor.id, actorName: actor.name, at, changes}; return {id, values, revision: revision+1, createdBy: previous?.createdBy||actor.id, createdByName: previous?.createdByName||actor.name, createdAt: previous?.createdAt||at, updatedBy: actor.id, updatedByName: actor.name, updatedAt: at, history: {...previous?.history, [auditId]: audit}};
