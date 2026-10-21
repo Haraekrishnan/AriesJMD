@@ -2,7 +2,7 @@
 import {get, onValue, push, ref, runTransaction} from 'firebase/database';
 import {rtdb} from '@/lib/rtdb';
 import type {User} from '@/lib/types';
-import {saveCandidate, validateCandidate, type RecordEntry} from './model';
+import {fields, saveCandidate, validateCandidate, type RecordEntry} from './model';
 export type RecruitmentPermissions={view:boolean;manage:boolean};
 const recordsPath='privateRecruitment/records';
 // Keep the record's cache alive until the transaction completes. A one-shot
@@ -32,7 +32,7 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
     if(!view)throw new Error('View Recruitment Sheet permission is required.');
     if(data.action==='list'){
       const snapshot=await get(ref(rtdb,recordsPath));
-      return Object.values(snapshot.val()||{}).filter(entry=>!(entry as RecordEntry).deletedAt).map(entry=>{const {history,...record}=entry as RecordEntry;return record;}) as T;
+      return Object.values(snapshot.val()||{}).filter(entry=>!(entry as RecordEntry).deletedAt).map(entry=>{const {history,...record}=entry as RecordEntry;return {...record,values:{...Object.fromEntries(fields.map(k=>[k,''])),...record.values}};}) as T;
     }
     if(data.action==='history'){
       if(typeof data.id!=='string'||!/^[-A-Za-z0-9_]{1,128}$/.test(data.id))throw new Error('Invalid candidate.');
@@ -54,9 +54,10 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
       if(!result.committed)throw new Error(failure);
       return {id:data.id} as T;
     }
-    if(data.action!=='save')throw new Error('Unknown recruitment action.');
+    if(data.action!=='save'&&data.action!=='followUp')throw new Error('Unknown recruitment action.');
     if(!manage)throw new Error('Manage Recruitment Sheet permission is required.');
     const values=validateCandidate(data.values);
+    if(data.action==='followUp'&&!data.id)throw new Error('Save the candidate before recording a follow-up.');
     const id=data.id||push(ref(rtdb,recordsPath)).key;
     if(typeof id!=='string'||!/^[-A-Za-z0-9_]{1,128}$/.test(id)||!Number.isInteger(data.revision)||Number(data.revision)<0)throw new Error('Invalid candidate or revision.');
     const recordRef=ref(rtdb,`${recordsPath}/${id}`);
@@ -66,7 +67,7 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
     const result=await recordTransaction(recordRef,(previous:RecordEntry|null)=>{
       try{
         if(data.id&&!previous){failure='Candidate no longer exists. Reload the sheet.';return;}
-        return saveCandidate(previous,values,Number(data.revision),{id:user.id,name:user.name},id,auditId,at);
+        return saveCandidate(previous,values,Number(data.revision),{id:user.id,name:user.name},id,auditId,at,data.action==='followUp'?'Followed up':undefined);
       }catch(error){failure=error instanceof Error?error.message:failure;return;}
     });
     if(!result.committed)throw new Error(failure);

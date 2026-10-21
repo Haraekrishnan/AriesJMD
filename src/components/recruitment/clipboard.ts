@@ -13,7 +13,7 @@ export function parseClipboard(text:string):string[][]{
  return rows;
 }
 export function normalizePastedValue(field:string,value:string):string{
- if(field==='travelDate'||field==='followUpDate'){
+ if(field==='travelDate'||field==='followUpDate'||field==='lastFollowUpDate'){
   const match=value.trim().match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
   if(match)return `${match[3]}-${match[2].padStart(2,'0')}-${match[1].padStart(2,'0')}`;
  }
