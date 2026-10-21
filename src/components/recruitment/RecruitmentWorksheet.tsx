@@ -8,11 +8,13 @@ type PastePatch={version:number;values:Partial<Candidate>};
 
 type Call=<T>(data:Record<string,unknown>)=>Promise<T>;
 const stages=['On Going','Finalized','Not Interested'];
+const detailFields:Field[]=['followUp','followUpDate','status','travelDate','travelNote'];
 const empty=(stage:string)=>({name:'',contact:'',designation:'',age:'',experience:'',salary:'',allowance:'',documents:'',remark:'',followUp:'',followUpDate:'',status:'',travelDate:'',travelNote:'',stage});
 const same=(a:Candidate,b:Candidate)=>JSON.stringify(a)===JSON.stringify(b);
 export function RecruitmentSheetRow({record,stage,columns,labels,number,canManage,call,onSaved,onDirty,onHistory,canDelete=false,onDelete,patch,onPasteRange,onPasteApplied}:{record?:RecordEntry;stage:string;columns:Field[];labels:Record<Field,string>;number:number;canManage:boolean;call:Call;onSaved:(record:RecordEntry)=>void;onDirty:(dirty:boolean)=>void;onHistory:(record:RecordEntry)=>void;canDelete?:boolean;onDelete?:(record?:RecordEntry)=>void;patch?:PastePatch;onPasteRange?:(col:number,text:string)=>void;onPasteApplied?:()=>void}){
  const [values,setValues]=useState<Candidate>(record?.values||empty(stage));
  const [status,setStatus]=useState('');
+ const [expanded,setExpanded]=useState(false);
  const [error,setError]=useState('');
  const base=useRef(record),latest=useRef(values),running=useRef(false),timer=useRef<ReturnType<typeof setTimeout>|null>(null),alive=useRef(true);
  const callbacks=useRef({onSaved,onDirty});callbacks.current={onSaved,onDirty};
@@ -46,16 +48,19 @@ export function RecruitmentSheetRow({record,stage,columns,labels,number,canManag
  const discard=()=>{if(timer.current)clearTimeout(timer.current);latest.current=base.current?.values||empty(stage);setValues(latest.current);setError('');setStatus('');callbacks.current.onDirty(false);};
  const navigate=(event:React.KeyboardEvent<HTMLInputElement|HTMLSelectElement>,col:number)=>{
   if(event.key!=='Enter')return;event.preventDefault();void save();
-  const row=event.currentTarget.closest('tr');const target=(event.shiftKey?row?.previousElementSibling:row?.nextElementSibling)?.querySelector<HTMLElement>(`[data-column="${col}"]`);target?.focus();
+  const row=event.currentTarget.closest('tr');let next=event.shiftKey?row?.previousElementSibling:row?.nextElementSibling;while(next&&!next.hasAttribute("data-new"))next=event.shiftKey?next.previousElementSibling:next.nextElementSibling;const target=next?.querySelector<HTMLElement>(`[data-column="${col}"]`);target?.focus();
  };
- return <tr data-stage={values.stage} data-new={!base.current}>
+ const mainColumns=columns.filter(k=>!detailFields.includes(k));
+ return <><tr data-stage={values.stage} data-new={!base.current} data-error={!!error}>
   <td>{number}</td>
-  {columns.map((field,col)=><td key={field} className={`${field==='name'?styles.name:''} ${styles.editableCell}`}>
-   {canManage?(field==='stage'?<select aria-label={`${labels[field]} row ${number}`} data-column={col} value={values[field]} onChange={e=>change(field,e.target.value)} onBlur={()=>void save()} onKeyDown={e=>navigate(e,col)} onPaste={e=>paste(e,col)}>{stages.map(s=><option key={s}>{s}</option>)}</select>:<input aria-label={`${labels[field]} row ${number}`} data-column={col} type={field==='travelDate'||field==='followUpDate'?'date':'text'} value={values[field]} placeholder={!base.current&&field==='name'?'Type candidate name…':undefined} maxLength={field==='remark'||field==='travelNote'?4000:200} onChange={e=>change(field,e.target.value)} onBlur={()=>void save()} onKeyDown={e=>navigate(e,col)} onPaste={e=>paste(e,col)}/>):values[field]||'—'}
-  </td>)}
-  <td className={styles.rowState}><span role="status">{status||(!base.current?'New row':'Saved')}</span>{base.current&&<small>{base.current.updatedByName}<br/>{new Date(base.current.updatedAt).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}</small>}{error&&<><p role="alert">{error}</p><button type="button" onClick={()=>void save()}>Retry</button><button type="button" onClick={discard}>Discard changes</button></>}</td>
-  <td>{canDelete&&<button type="button" disabled={running.current} onClick={()=>onDelete?.(base.current)}>Delete row</button>}{base.current&&<button type="button" onClick={()=>onHistory(base.current!)}>History</button>}</td>
- </tr>;
+  {mainColumns.map(field=>{const col=columns.indexOf(field);return <td key={field} data-label={labels[field]} className={`${field==='name'?styles.name:''} ${styles.editableCell}`}>
+   {canManage?(field==='stage'?<select aria-label={`${labels[field]} row ${number}`} data-column={col} value={values[field]} onChange={e=>change(field,e.target.value)} onBlur={()=>void save()} onKeyDown={e=>navigate(e,col)} onPaste={e=>paste(e,col)}>{stages.map(s=><option key={s}>{s}</option>)}</select>:<input title={values[field]} aria-label={`${labels[field]} row ${number}`} data-column={col} type={field==='travelDate'||field==='followUpDate'?'date':'text'} value={values[field]} placeholder={!base.current&&field==='name'?'Type candidate name…':undefined} maxLength={field==='remark'||field==='travelNote'?4000:200} onChange={e=>change(field,e.target.value)} onBlur={()=>void save()} onKeyDown={e=>navigate(e,col)} onPaste={e=>paste(e,col)}/>):values[field]||'—'}
+  </td>;})}
+  <td className={styles.rowActions} data-label="Actions"><button type="button" aria-label={`Details row ${number}`} aria-expanded={expanded} title="Follow-up, travel and history" onClick={()=>setExpanded(!expanded)}>{expanded?'⌃':'⌄'}</button>{canDelete&&<button type="button" aria-label={`Delete row ${number}`} title="Delete row" disabled={running.current} onClick={()=>onDelete?.(base.current)}>×</button>}<span role="status" className={styles.saveDot} data-error={!!error} title={error||status||'Saved'}>{error?'!':status==='Saving…'?'…':dirty()?'○':base.current?'✓':''}</span></td>
+ </tr>
+ {expanded&&<tr className={styles.detailsRow} data-stage={values.stage}><td colSpan={mainColumns.length+2}><div className={styles.detailsGrid}>{columns.filter(k=>detailFields.includes(k)).map(field=><label key={field}>{labels[field]}{canManage?<input aria-label={`${labels[field]} row ${number}`} type={field==='travelDate'||field==='followUpDate'?'date':'text'} value={values[field]} maxLength={field==='travelNote'?4000:200} onChange={e=>change(field,e.target.value)} onBlur={()=>void save()} onPaste={e=>paste(e,columns.indexOf(field))}/>:<span>{values[field]||'—'}</span>}</label>)}<div className={styles.auditInfo}><span>{status||(!base.current?'New row':'Saved')}</span>{base.current&&<><small>Updated by {base.current.updatedByName} · {new Date(base.current.updatedAt).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}</small><button type="button" onClick={()=>onHistory(base.current!)}>History</button></>}</div></div></td></tr>}
+ {error&&<tr className={styles.errorRow}><td colSpan={mainColumns.length+2}><div role="alert">Row {number}: {error} <button type="button" onClick={()=>void save()}>Retry</button><button type="button" onClick={discard}>Discard changes</button></div></td></tr>}
+ </>;
 }
 function validateForCompare(values:Candidate){return Object.fromEntries(Object.entries(values).map(([k,v])=>[k,v.trim()])) as Candidate;}
 
@@ -81,9 +86,9 @@ export default function RecruitmentWorksheet({records,stage,columns,labels,offse
   if(!window.confirm(record?'Delete '+record.values.name+' from the recruitment sheet? Its change history will be retained.':'Remove this blank row?'))return;
   setDeleting(true);setSheetError('');try{if(record){await call({action:'delete',id:record.id,revision:record.revision});onDeleted?.(record.id);}setNewRows(previous=>{const remaining=previous.filter(r=>'new-'+r.key!==key);return remaining.length?remaining:[{key:Math.max(-1,...previous.map(r=>r.key))+1}];});pending(key,false);}catch(e){setSheetError(e instanceof Error?e.message:'Could not delete row.');}finally{setDeleting(false);}
  };
- return <>{sheetError&&<p role="alert" className={styles.error}>{sheetError}</p>}<div className={styles.tableWrap}><table><thead><tr><th>#</th>{columns.map(k=><th key={k}>{labels[k]}</th>)}<th>Save status / Updated by</th><th>Actions</th></tr></thead><tbody>
+ return <>{sheetError&&<p role="alert" className={styles.error}>{sheetError}</p>}<div className={styles.tableWrap}><table><colgroup><col style={{width:"3%"}}/>{columns.filter(k=>!detailFields.includes(k)).map(k=><col key={k} style={{width:({name:15,contact:11,designation:7,age:4,experience:7,salary:7,allowance:7,documents:9,remark:14,stage:10} as Partial<Record<Field,number>>)[k]+"%"}}/>)}<col style={{width:"6%"}}/></colgroup><thead><tr><th>#</th>{columns.filter(k=>!detailFields.includes(k)).map(k=><th key={k}>{k==='contact'?'Contact':labels[k]}</th>)}<th>Actions</th></tr></thead><tbody>
  {existing.map((r,i)=><RecruitmentSheetRow key={r.id} record={r} stage={stage} columns={columns} labels={labels} number={offset+i+1} canManage={canManage} call={call} onSaved={onSaved} onDirty={value=>pending(r.id,value)} onHistory={onHistory} canDelete={canDelete&&!deleting} onDelete={record=>void deleteRow(r.id,record)} patch={patches[r.id]} onPasteApplied={()=>setPatches(previous=>{const next={...previous};delete next[r.id];return next;})} onPasteRange={(col,text)=>pasteRange(r.id,col,text)}/>)}
  {canManage&&newRows.map((row,i)=><RecruitmentSheetRow key={'new-'+row.key} record={row.record} stage={stage} columns={columns} labels={labels} number={offset+existing.length+i+1} canManage={canManage} call={call} onSaved={saved=>{setNewRows(previous=>{const next=previous.map(r=>r.key===row.key?{...r,record:saved}:r);if(next.every(r=>r.record))next.push({key:Math.max(...next.map(r=>r.key))+1});return next;});onSaved(saved);}} onDirty={value=>pending('new-'+row.key,value)} onHistory={onHistory} canDelete={canDelete&&!deleting} onDelete={record=>void deleteRow('new-'+row.key,record)} patch={patches['new-'+row.key]} onPasteApplied={()=>setPatches(previous=>{const next={...previous};delete next['new-'+row.key];return next;})} onPasteRange={(col,text)=>pasteRange('new-'+row.key,col,text)}/>)}
- {!canManage&&!records.length&&<tr><td colSpan={columns.length+3}>No candidates match this view.</td></tr>}
+ {!canManage&&!records.length&&<tr><td colSpan={columns.filter(k=>!detailFields.includes(k)).length+2}>No candidates match this view.</td></tr>}
  </tbody></table></div></>;
 }

@@ -1,10 +1,17 @@
 'use client';
-import {get, push, ref, runTransaction} from 'firebase/database';
+import {get, onValue, push, ref, runTransaction} from 'firebase/database';
 import {rtdb} from '@/lib/rtdb';
 import type {User} from '@/lib/types';
 import {saveCandidate, validateCandidate, type RecordEntry} from './model';
 export type RecruitmentPermissions={view:boolean;manage:boolean};
 const recordsPath='privateRecruitment/records';
+// .info is local SDK metadata: get() sends an unsupported server path.
+const databaseTime=()=>new Promise<string>((resolve,reject)=>{
+  onValue(ref(rtdb,'.info/serverTimeOffset'),snapshot=>{
+    const offset=snapshot.val();
+    resolve(new Date(Date.now()+(typeof offset==='number'?offset:0)).toISOString());
+  },reject,{onlyOnce:true});
+});
 export function createRecruitmentClient(user:User,permissions:RecruitmentPermissions){
   return async function recruitmentCall<T>(data:Record<string,unknown>):Promise<T>{
     const active=user.status!=='locked'&&user.status!=='deactivated';
@@ -26,7 +33,7 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
       if(typeof data.id!=='string'||!/^[-A-Za-z0-9_]{1,128}$/.test(data.id)||!Number.isInteger(data.revision))throw new Error('Invalid candidate or revision.');
       const recordRef=ref(rtdb,recordsPath+'/'+data.id);await get(recordRef);
       const auditId=push(ref(rtdb,recordsPath+'/'+data.id+'/history')).key!;
-      const offset=(await get(ref(rtdb,'.info/serverTimeOffset'))).val();const at=new Date(Date.now()+(typeof offset==='number'?offset:0)).toISOString();
+      const at=await databaseTime();
       let failure='Candidate no longer exists.';
       const result=await runTransaction(recordRef,(previous:RecordEntry|null)=>{
         if(!previous||previous.deletedAt)return;
@@ -45,8 +52,7 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
     // Prime the cache so an existing candidate is not mistaken for a missing one.
     await get(recordRef);
     const auditId=push(ref(rtdb,`${recordsPath}/${id}/history`)).key!;
-    const offset=(await get(ref(rtdb,'.info/serverTimeOffset'))).val();
-    const at=new Date(Date.now()+(typeof offset==='number'?offset:0)).toISOString();
+    const at=await databaseTime();
     let failure='Could not save candidate.';
     const result=await runTransaction(recordRef,(previous:RecordEntry|null)=>{
       try{

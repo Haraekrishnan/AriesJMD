@@ -3,3 +3,45 @@
 .tableWrap th:nth-child(2){left:0;z-index:3}.tableWrap .name{background:#fff;z-index:1}.tableWrap tr:nth-child(even) .name{background:#f8fafc}.tableWrap tr[data-stage=Finalized] .name{background:#ecfdf5}.tableWrap tr[data-stage='Not Interested'] .name{background:#fff7f7}.tableWrap td:first-child{min-width:32px}
 @media(max-width:700px){.tableWrap .name{min-width:140px;max-width:160px;overflow-wrap:anywhere}}
 .tableWrap .editableCell{padding:0;min-width:130px}.tableWrap .editableCell input,.tableWrap .editableCell select{display:block;width:100%;min-width:130px;border:0;border-radius:0;background:transparent;padding:10px 9px;min-height:42px;color:#172b49;font:inherit;box-shadow:none}.tableWrap .editableCell input:focus,.tableWrap .editableCell select:focus{outline:2px solid #2563eb;outline-offset:-2px;background:#fff}.tableWrap .name input{min-width:180px;font-weight:600}.tableWrap tr[data-new=true]{background:#fff}.tableWrap tr[data-new=true] input::placeholder{color:#94a3b8;font-weight:400}.rowState{min-width:210px!important;max-width:280px}.rowState>span{font-size:12px;color:#2563eb}.rowState p{color:#b91c1c;font-size:12px;white-space:normal;margin-top:5px}.rowState button{padding:5px 7px;min-height:30px;font-size:11px;margin:5px 5px 0 0}.tableWrap td:last-child{min-width:100px}.tableWrap td:has([aria-label^="Remark"]),.tableWrap td:has([aria-label^="Travel / joining"]){min-width:260px}@media(max-width:700px){.tableWrap .editableCell input,.tableWrap .editableCell select{font-size:16px;min-height:44px}}
+/* Compact worksheet: secondary fields remain editable in Details. */
+.page{gap:12px}.cards button{padding:10px 14px;gap:3px}.cards strong{font-size:24px}.sheet{padding:14px}.filters{margin:10px 0}
+.tableWrap table{min-width:0;table-layout:fixed;width:100%;font-size:12px}
+.tableWrap th{padding:8px 5px;white-space:normal;font-size:11px;line-height:1.25}
+.tableWrap td,.tableWrap td:first-child,.tableWrap td:last-child,.tableWrap .editableCell,.tableWrap .name,.tableWrap td:has([aria-label^="Remark"]),.tableWrap td:has([aria-label^="Travel / joining"]){min-width:0;max-width:none;padding:0;vertical-align:middle;height:36px}
+.tableWrap td:first-child{padding:0 5px}.tableWrap .name{position:static}
+.tableWrap .editableCell input,.tableWrap .editableCell select,.tableWrap .name input{min-width:0;width:100%;min-height:36px;height:36px;padding:6px 5px;font-size:12px;line-height:24px;text-overflow:ellipsis}
+.tableWrap .editableCell>span{display:block;padding:6px;overflow-wrap:anywhere}
+.tableWrap .rowActions{white-space:nowrap;text-align:center}
+.tableWrap .rowActions button{padding:0;width:24px;height:30px;min-height:30px;border:0;background:transparent;font-size:19px;line-height:1}
+.tableWrap .rowActions button[title="Delete row"]{color:#dc2626}
+.saveDot{font-size:11px;color:#059669}.saveDot[data-error=true]{color:#dc2626;font-weight:bold}
+.tableWrap tr[data-error=true]{box-shadow:inset 3px 0 #ef4444}
+.tableWrap .detailsRow>td{height:auto;padding:12px;background:#f0f6fd}
+.detailsGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) 2fr;gap:10px}
+.detailsGrid label{display:grid;gap:5px;font-size:12px;color:#475569;min-width:0}
+.detailsGrid input{width:100%;min-width:0;font-size:13px;min-height:36px;padding:6px 8px}
+.auditInfo{grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:#64748b}
+.tableWrap .auditInfo small{white-space:normal;margin:0}.auditInfo button{min-height:30px;padding:4px 10px;font-size:12px}
+.tableWrap .errorRow>td{height:auto;padding:6px 10px;background:#fff1f2;color:#b91c1c;font-size:12px}
+.errorRow button{min-height:28px;padding:3px 8px;margin-left:8px;font-size:12px}
+@media(max-width:1000px){
+.tableWrap{overflow-x:hidden}.tableWrap table,.tableWrap tbody,.tableWrap tr,.tableWrap td{display:block;width:100%}.tableWrap colgroup,.tableWrap thead{display:none}
+.tableWrap tr[data-new]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));padding:8px;border-bottom:1px solid #d8e2ef}
+.tableWrap tr[data-new] td{height:auto;border:0;padding:2px 4px;min-width:0}
+.tableWrap tr[data-new] td:before{content:attr(data-label);display:block;font-size:11px;color:#64748b;padding:2px 0}
+.tableWrap tr[data-new] td:first-child,.tableWrap .rowActions{grid-column:1/-1;text-align:left}
+.tableWrap .editableCell input,.tableWrap .editableCell select{font-size:16px;min-height:44px;height:44px;border:1px solid #e2e8f0;border-radius:4px;padding:6px}
+.tableWrap .rowActions button{width:44px;height:44px;min-height:44px}.detailsGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.detailsGrid label:last-of-type{grid-column:1/-1}
+}
+/* Stage colours cover the complete row, including the name and action cells. */
+.tableWrap tr[data-stage='On Going']{--stage-bg:#eff6ff;--stage-accent:#2563eb;--stage-text:#1e40af;--stage-badge:#dbeafe}
+.tableWrap tr[data-stage='Finalized']{--stage-bg:#ecfdf5;--stage-accent:#059669;--stage-text:#065f46;--stage-badge:#d1fae5}
+.tableWrap tr[data-stage='Not Interested']{--stage-bg:#fff1f2;--stage-accent:#e11d48;--stage-text:#9f1239;--stage-badge:#ffe4e6}
+.tableWrap tr[data-stage],.tableWrap tr[data-stage]>td,.tableWrap tr[data-stage]>td.name{background:var(--stage-bg)}
+.tableWrap tr[data-stage][data-new]>td:first-child{box-shadow:inset 3px 0 var(--stage-accent)}
+.tableWrap tr[data-stage] .editableCell select{background:var(--stage-badge);color:var(--stage-text);font-weight:600}
+.tableWrap tr[data-stage] .editableCell select:focus{outline:2px solid var(--stage-accent);outline-offset:-2px}
+.cards button:nth-child(2)[data-active=true]{background:#ecfdf5;outline-color:#059669}
+.cards button:nth-child(3){border-top-color:#e11d48}
+.cards button:nth-child(3)[data-active=true]{background:#fff1f2;outline-color:#e11d48}
+@media(max-width:1000px){.tableWrap tr[data-stage][data-new]{box-shadow:inset 3px 0 var(--stage-accent)}.tableWrap tr[data-stage][data-new]>td:first-child{box-shadow:none}}
