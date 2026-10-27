@@ -62,6 +62,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (pathname === '/manpower-list/recruitment') return <main className="min-h-screen w-full bg-white">{children}</main>;
+
   return (
     <div className={`${pathname.startsWith('/ehs') ? '' : 'main-portal'} flex w-full bg-background ${pathname === '/account' ? 'h-dvh min-h-0 overflow-hidden' : 'min-h-screen'}`}>
       <DecorationProvider />
