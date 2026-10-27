@@ -2,7 +2,7 @@
 import {get, onValue, push, ref, runTransaction} from 'firebase/database';
 import {rtdb} from '@/lib/rtdb';
 import type {User} from '@/lib/types';
-import {fields, saveCandidate, validateCandidate, type RecordEntry} from './model';
+import {fields, saveCandidate, isCandidateLocked, changeCandidateLock, validateCandidate, type RecordEntry} from './model';
 export type RecruitmentPermissions={view:boolean;manage:boolean};
 const recordsPath='privateRecruitment/records';
 // Keep the record's cache alive until the transaction completes. A one-shot
@@ -39,7 +39,15 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
       const snapshot=await get(ref(rtdb,`${recordsPath}/${data.id}/history`));
       return Object.values(snapshot.val()||{}).sort((a,b)=>(a as {at:string}).at.localeCompare((b as {at:string}).at)) as T;
     }
+    if(data.action==='unlock'||data.action==='lock'){
+      if(user.role!=='Admin')throw Error('Only Admin can unlock or lock finalized candidates.');
+      if(typeof data.id!=='string'||!/^[-A-Za-z0-9_]{1,128}$/.test(data.id)||!Number.isInteger(data.revision))throw Error('Invalid candidate or revision.');
+      const recordRef=ref(rtdb,recordsPath+'/'+data.id),auditId=push(ref(rtdb,recordsPath+'/'+data.id+'/history')).key!,at=await databaseTime();let failure='Could not change candidate lock.';
+      const result=await recordTransaction(recordRef,previous=>{try{return changeCandidateLock(previous,Number(data.revision),user,data.action==='unlock',auditId,at);}catch(e){failure=e instanceof Error?e.message:failure;return;}});
+      if(!result.committed)throw Error(failure);return {id:data.id,record:result.snapshot.val()} as T;
+    }
     if(data.action==='delete'){
+
       if(user.role!=='Admin')throw new Error('Only Admin can delete recruitment rows.');
       if(typeof data.id!=='string'||!/^[-A-Za-z0-9_]{1,128}$/.test(data.id)||!Number.isInteger(data.revision))throw new Error('Invalid candidate or revision.');
       const recordRef=ref(rtdb,recordsPath+'/'+data.id);
@@ -48,6 +56,7 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
       let failure='Candidate no longer exists.';
       const result=await recordTransaction(recordRef,(previous:RecordEntry|null)=>{
         if(!previous||previous.deletedAt)return;
+        if(isCandidateLocked(previous)){failure='This finalized candidate is locked. Unlock the row before deleting it.';return;}
         if(previous.revision!==data.revision){failure='This candidate was changed by another user. Refresh before deleting.';return;}
         return {...previous,deletedAt:at,deletedBy:user.id,deletedByName:user.name,updatedAt:at,updatedBy:user.id,updatedByName:user.name,revision:previous.revision+1,history:{...previous.history,[auditId]:{id:auditId,action:'Deleted',actorId:user.id,actorName:user.name,at,changes:{deleted:{before:'No',after:'Yes'}}}}};
       });

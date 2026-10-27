@@ -22,3 +22,4 @@
 .editableCell[data-field=stage] select{background:#e9eef2;color:#40536a}
 .legend>[data-stage='On Going']:before{background:#7a8da3}
 .tableWrap tr[data-stage][data-new=true]{--stage-bg:#fff}.tableWrap tr[data-stage][data-selected=true]{--stage-bg:#edf2f0}
+.lockedBadge{display:inline-block;color:#4b6356;font-size:11px;font-weight:600;white-space:normal}.tableWrap tr[data-locked=true] .editableCell>span{cursor:default}.selectionBar>.lockedBadge{padding:5px 9px;background:#e8f0eb;border:1px solid #d2dfd6;border-radius:4px}

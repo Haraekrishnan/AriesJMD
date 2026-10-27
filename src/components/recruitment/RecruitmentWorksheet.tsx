@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {fields,validateCandidate,type Candidate,type Field,type RecordEntry} from './model';
+import {fields,validateCandidate,isCandidateLocked,type Candidate,type Field,type RecordEntry} from './model';
 import {followUpState} from './followUp';
 import {parseClipboard,normalizePastedValue} from './clipboard';
 import styles from './recruitment.module.css';
@@ -23,13 +23,14 @@ export function RecruitmentSheetRow({record,stage,columns,labels,number,canManag
  const [values,setValues]=useState<Candidate>(normalize(record?.values||empty(stage),stage));
  const [status,setStatus]=useState('');const [error,setError]=useState('');
  const base=useRef(record),latest=useRef(values),running=useRef(false),timer=useRef<ReturnType<typeof setTimeout>|null>(null),alive=useRef(true);
+ const locked=isCandidateLocked(base.current);const canEdit=canManage&&!locked;
  const callbacks=useRef({onSaved,onDirty});callbacks.current={onSaved,onDirty};
  const dirty=()=>!same(latest.current,base.current?.values||empty(stage));
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;if(timer.current)clearTimeout(timer.current);};},[]);
  useEffect(()=>{if(record&&!dirty()&&!running.current){base.current=record;latest.current=normalize(record.values,stage);setValues(latest.current);}},[record]);
  const save=async(action='save')=>{
   if(timer.current)clearTimeout(timer.current);
-  if(running.current||(!dirty()&&action!=='followUp')||!canManage)return;
+  if(running.current||(!dirty()&&action!=='followUp')||!canEdit)return;
   let snapshot:Candidate;
   try{snapshot=validateCandidate(latest.current);}catch(e){setError(e instanceof Error?e.message:'Check this row.');setStatus('Not saved');return;}
   running.current=true;setStatus('Saving…');setError('');
@@ -50,14 +51,14 @@ export function RecruitmentSheetRow({record,stage,columns,labels,number,canManag
   latest.current={...latest.current,[field]:value};setValues(latest.current);setError('');setStatus(dirty()?'Unsaved changes':'');callbacks.current.onDirty(dirty());
   if(timer.current)clearTimeout(timer.current);timer.current=setTimeout(()=>void save(),800);
  };
- useEffect(()=>{if(!patch||!canManage)return;latest.current={...latest.current,...patch.values};setValues(latest.current);setError('');setStatus('Unsaved changes');callbacks.current.onDirty(dirty());if(timer.current)clearTimeout(timer.current);timer.current=setTimeout(()=>void save(),800);onPasteApplied?.();},[patch]);
+ useEffect(()=>{if(!patch||!canEdit)return;latest.current={...latest.current,...patch.values};setValues(latest.current);setError('');setStatus('Unsaved changes');callbacks.current.onDirty(dirty());if(timer.current)clearTimeout(timer.current);timer.current=setTimeout(()=>void save(),800);onPasteApplied?.();},[patch]);
  const paste=(event:React.ClipboardEvent<HTMLInputElement|HTMLSelectElement>,field:Field)=>{const text=event.clipboardData.getData('text/plain');if(onPasteRange&&(text.includes('\t')||text.includes('\n')||text.includes('\r'))){event.preventDefault();onPasteRange(field,text);}};
  const discard=()=>{if(timer.current)clearTimeout(timer.current);latest.current=normalize(base.current?.values||empty(stage),stage);setValues(latest.current);setError('');setStatus('');callbacks.current.onDirty(false);};
  const navigate=(event:React.KeyboardEvent<HTMLInputElement|HTMLSelectElement>,field:Field)=>{
   if(event.key!=='Enter')return;event.preventDefault();void save();const row=event.currentTarget.closest('tr');let next=event.shiftKey?row?.previousElementSibling:row?.nextElementSibling;while(next&&!next.hasAttribute('data-new'))next=event.shiftKey?next.previousElementSibling:next.nextElementSibling;next?.querySelector<HTMLElement>(`[data-column="${field}"]`)?.focus();
  };
  const editor=(field:Field,context=false)=>{
-  if(!canManage)return <span>{field==='assignedTo'?(assignees.find(p=>p.id===values.assignedTo)?.name||base.current?.assignedToName||values.assignedTo||'Unassigned'):values[field]||'—'}</span>;
+  if(!canEdit)return <span>{field==='stage'&&locked?<strong className={styles.lockedBadge}>Finalized · Locked</strong>:field==='assignedTo'?(assignees.find(p=>p.id===values.assignedTo)?.name||base.current?.assignedToName||values.assignedTo||'Unassigned'):values[field]||'—'}</span>;
   const common={'aria-label':context?'Assign selected candidate':`${labels[field]} row ${number}`,'data-column':field,value:values[field]||'',onChange:(e:React.ChangeEvent<HTMLInputElement|HTMLSelectElement>)=>change(field,e.target.value),onBlur:()=>void save(),onKeyDown:(e:React.KeyboardEvent<HTMLInputElement|HTMLSelectElement>)=>navigate(e,field),onPaste:(e:React.ClipboardEvent<HTMLInputElement|HTMLSelectElement>)=>paste(e,field)};
   if(['lastFollowUpDate','followUpDate','travelDate'].includes(field))return <DateEditor {...common}/>;
   if(field==='stage')return <select {...common}>{stages.map(s=><option key={s} value={s}>{!base.current&&!values.name?'':s}</option>)}</select>;
@@ -65,9 +66,10 @@ export function RecruitmentSheetRow({record,stage,columns,labels,number,canManag
   return <input {...common} data-document={field==='documents'?(values[field].toLowerCase().startsWith('complet')?'complete':values[field]?'pending':''):undefined} title={values[field]} list={field==='followUpOutcome'?'recruitment-outcomes':field==='followUpChannel'?'recruitment-channels':undefined} type={['lastFollowUpDate','followUpDate','travelDate'].includes(field)?'date':'text'} maxLength={['remark','travelNote','followUpNote'].includes(field)?4000:200} placeholder={undefined}/>;
  };
  const completion=<td className={styles.completedCell} data-label="Completed by / time"><strong>{base.current?.completedByName||(base.current?'—':'')}</strong><small>{stamp(base.current?.completedAt)}</small></td>;
- const toolbar=<div className={styles.selectionBar}><strong>{values.name||'New candidate'} selected</strong>{canManage&&<><label className={styles.assignControl}><Icon name="person"/><span>Assign / Reassign</span>{editor('assignedTo',true)}</label><button type="button" className={styles.completeButton} disabled={!base.current||status==='Saving…'} onClick={()=>void save('followUp')}><Icon name="check"/> Complete follow-up</button></>}{base.current&&<button type="button" onClick={()=>onHistory(base.current!)}><Icon name="document"/> View history</button>}{canDelete&&<details className={styles.rowMenu}><summary aria-label="More row actions">⋮</summary><button type="button" disabled={status==='Saving…'} onClick={()=>onDelete?.(base.current)}>Delete row</button></details>}<button type="button" onClick={onDeselect}>Deselect</button><span className={styles.saveState} role="status">{status&&status!=='Saved'?status:''}</span></div>;
+ const changeLock=async(unlock:boolean)=>{if(!base.current||running.current||dirty())return;running.current=true;setStatus('Saving…');setError('');try{const saved=await call<{record:RecordEntry}>({action:unlock?'unlock':'lock',id:base.current.id,revision:base.current.revision});base.current=saved.record;latest.current=normalize(saved.record.values,stage);setValues(latest.current);callbacks.current.onSaved(saved.record);setStatus('Saved');}catch(e){setError(e instanceof Error?e.message:'Could not change lock.');setStatus('Not saved');}finally{running.current=false;}};
+ const toolbar=<div className={styles.selectionBar}><strong>{values.name||'New candidate'} selected</strong>{locked&&<span className={styles.lockedBadge}>Locked · Admin unlock required</span>}{canEdit&&<><label className={styles.assignControl}><Icon name="person"/><span>Assign / Reassign</span>{editor('assignedTo',true)}</label><button type="button" className={styles.completeButton} disabled={!base.current||status==='Saving…'} onClick={()=>void save('followUp')}><Icon name="check"/> Complete follow-up</button></>}{base.current&&<button type="button" onClick={()=>onHistory(base.current!)}><Icon name="document"/> View history</button>}{canDelete&&base.current?.values.stage==='Finalized'&&<button type="button" disabled={status==='Saving…'||dirty()} onClick={()=>void changeLock(locked)}>{locked?'Unlock candidate':'Lock candidate'}</button>}{canDelete&&!locked&&<details className={styles.rowMenu}><summary aria-label="More row actions">⋮</summary><button type="button" disabled={status==='Saving…'} onClick={()=>onDelete?.(base.current)}>Delete row</button></details>}<button type="button" onClick={onDeselect}>Deselect</button><span className={styles.saveState} role="status">{status&&status!=='Saved'?status:''}</span></div>;
  const audit=<div className={styles.selectionAudit}><span><Icon name="person"/> &nbsp; Assigned to {assignees.find(p=>p.id===values.assignedTo)?.name||base.current?.assignedToName||'Unassigned'}{base.current?.assignedByName?` by ${base.current.assignedByName} · ${stamp(base.current.assignedAt)}`:''}</span><span><Icon name="history"/> &nbsp; Last follow-up completed {base.current?.completedByName?`by ${base.current.completedByName} · ${stamp(base.current.completedAt)}`:'— Not recorded'}</span></div>;
- return <><tr data-stage={values.stage} data-new={!base.current} data-error={!!error} data-selected={selected} onFocus={event=>{if(!selected&&!(event.target as HTMLElement).closest('[data-row-selector]'))onSelect?.();}}>
+ return <><tr data-stage={values.stage} data-new={!base.current} data-error={!!error} data-locked={locked} data-selected={selected} onFocus={event=>{if(!selected&&!(event.target as HTMLElement).closest('[data-row-selector]'))onSelect?.();}}>
  <td className={styles.gutter}>{number}</td><td className={styles.rowNumber}><button type="button" aria-label={`Select row ${number}`} aria-pressed={selected} data-row-selector="true" onClick={()=>selected?onDeselect?.():onSelect?.()}>{number}</button></td>
  {columns.map(field=><FragmentCell key={field}>{field==='stage'&&completion}<td data-field={field} data-label={field==='name'?'Candidate / Contact':labels[field]} className={`${styles.editableCell} ${field==='name'?styles.name:''}`}>{editor(field)}{field==='name'&&<div className={styles.contactLine}>{editor('contact')}</div>}{field==='followUpDate'&&followUpState(values.followUpDate,values.stage)&&<span className={styles.dueBadge} data-due={followUpState(values.followUpDate,values.stage)}>{followUpState(values.followUpDate,values.stage)}</span>}</td></FragmentCell>)}
  </tr>{selected&&panelHost&&createPortal(toolbar,panelHost)}{selected&&auditHost&&createPortal(audit,auditHost)}
@@ -95,6 +97,7 @@ export default function RecruitmentWorksheet({addRowVersion=0,filters,auditHost,
    const sequence=[...existing.map(r=>r.id),...drafts.map(r=>'new-'+r.key)],start=sequence.indexOf(key);if(start<0)return;
    const extras=[] as {key:number;record?:RecordEntry}[];let nextKey=Math.max(-1,...newRows.map(r=>r.key))+1;
    while(sequence.length<start+matrix.length){extras.push({key:nextKey});sequence.push('new-'+nextKey++);}
+   for(const target of sequence.slice(start,start+matrix.length)){const record=existing.find(r=>r.id===target)||drafts.find(r=>'new-'+r.key===target)?.record;if(isCandidateLocked(record))throw Error('The pasted range includes a locked finalized candidate. Ask an Admin to unlock that row first.');}
    const version=++pasteVersion.current,changes:Record<string,PastePatch>={};matrix.forEach((cells,index)=>{const values:Partial<Candidate>={};cells.forEach((value,j)=>{const k=pasteColumns[col+j];if(k==='assignedTo'&&value.trim()&&value.trim().toLowerCase()!=='unassigned'){const matches=assignees.filter(p=>p.id===value.trim()||p.name.toLowerCase()===value.trim().toLowerCase());if(matches.length!==1)throw new Error('Assigned to must match one eligible user name or ID: '+value);values[k]=matches[0].id;}else values[k]=k==='assignedTo'?'':normalizePastedValue(k,value);});changes[sequence[start+index]]={version,values};});
    if(extras.length)setNewRows(previous=>[...previous,...extras]);setPatches(previous=>({...previous,...changes}));setSheetError('');
   }catch(e){setSheetError(e instanceof Error?e.message:'Could not paste cells.');}
