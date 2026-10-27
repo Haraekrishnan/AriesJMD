@@ -8,3 +8,17 @@
 @media(min-width:1400px){.filters>input{width:26vw;max-width:405px;flex:none}.filters{flex:none}.gridTools{gap:22px}.gridTools .filters{gap:26px}}
 .page button svg{margin-right:7px}.gridTools>button[aria-label] svg{margin:0}.selectionAudit svg{width:22px;height:22px}.bottomAudit>span svg{width:18px;height:18px}.assignControl>svg{width:20px;height:20px}@media(max-width:1000px){.tableWrap table{min-width:1200px}.tableWrap{max-height:65dvh}}
 .page .stageTabs .addSheetRow{background:transparent;color:#52698b;font-size:22px;font-weight:400;padding:0 8px}.tableWrap td[data-field=designation] input{padding-left:10px;padding-right:2px}
+/* Neutral worksheet palette; stage remains legible without a blue wash. */
+.tableWrap tr[data-stage='On Going']{--stage-bg:#fff}
+.tableWrap tr[data-stage='On Going']:nth-child(even){--stage-bg:#f8fafb}
+.tableWrap tr[data-stage=Finalized]{--stage-bg:#f2f8f4}
+.tableWrap tr[data-stage='Not Interested']{--stage-bg:#fcf4f5}
+.tableWrap tr[data-new=true]{--stage-bg:#fff}
+.tableWrap tr[data-selected=true]{--stage-bg:#edf2f0}
+.tableWrap tr[data-selected=true]>td{border-top:1px solid #7d988a;border-bottom:1px solid #7d988a}
+.tableWrap tr[data-selected=true]>.rowNumber{box-shadow:inset 3px 0 #507563}
+.contextHost{background:#f5f7f8;border-bottom-color:#dce2e5}
+.selectionBar button,.assignControl{background:#fff!important;border-color:#d3dce1!important}
+.editableCell[data-field=stage] select{background:#e9eef2;color:#40536a}
+.legend>[data-stage='On Going']:before{background:#7a8da3}
+.tableWrap tr[data-stage][data-new=true]{--stage-bg:#fff}.tableWrap tr[data-stage][data-selected=true]{--stage-bg:#edf2f0}
