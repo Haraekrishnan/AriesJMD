@@ -46,7 +46,9 @@ export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement
   const creator = useMemo(() => users.find(u => u.id === request.creatorId), [users, request]);
   const assignee = useMemo(() => users.find(u => u.id === request.assigneeId), [users, request]);
   
-  const commentsArray = Array.isArray(request.comments) ? request.comments : Object.values(request.comments || {});
+  const commentsArray = useMemo(() => (
+    Array.isArray(request.comments) ? request.comments : Object.values(request.comments || {})
+  ).filter((comment): comment is Comment => !!comment && typeof comment === 'object'), [request.comments]);
 
   const handleAddComment = () => {
     if (!comment.trim()) return;
@@ -88,9 +90,9 @@ export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement
 
   const assignableUsers = useMemo(() => {
     if (!user) return [];
-    const currentParticipantIds = new Set([request.creatorId, request.assigneeId, ...(request.comments || []).map(c => c.userId)]);
+    const currentParticipantIds = new Set([request.creatorId, request.assigneeId, ...commentsArray.map(c => c.userId)]);
     return jmsAssignees(users).filter(u => !currentParticipantIds.has(u.id));
-  }, [user, users, request]);
+  }, [user, users, request, commentsArray]);
   
   const canTakeAction = user?.id === request.assigneeId;
   const canDelete = user?.role === 'Admin' || user?.id === request.creatorId;
@@ -114,7 +116,7 @@ export default function ViewDocumentMovementDialog({ isOpen, setIsOpen, movement
             <h4 className="font-semibold text-sm">History & Comments</h4>
             <ScrollArea className="h-48 rounded-md border p-2">
               <div className="space-y-3">
-                {commentsArray.length > 0 ? commentsArray.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()).map((c, i) => {
+                {commentsArray.length > 0 ? [...commentsArray].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime()).map((c, i) => {
                     const commentUser = users.find(u => u.id === c.userId);
                     return (
                         <div key={i} className="flex items-start gap-2">
