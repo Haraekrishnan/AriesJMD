@@ -8,7 +8,7 @@ export const shortDate=(date:string)=>date?new Date(date+'T00:00:00').toLocaleDa
 export function workbookRows(records:RecordEntry[],columns:readonly string[],labels:Record<string,string>){
   const stamp=(value:string)=>new Date(value).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'});
   return ['On Going','Finalized','Not Interested'].map(stage=>({stage,rows:[
-    ['SR.NO',...columns.map(key=>labels[key]),'Created by','Created at','Updated by','Updated at'],
-    ...records.filter(r=>!r.deletedAt&&r.values.stage===stage).map((r,i)=>[i+1,...columns.map(key=>r.values[key as keyof typeof r.values]||''),r.createdByName,stamp(r.createdAt),r.updatedByName,stamp(r.updatedAt)])
+    ['SR.NO',...columns.map(key=>labels[key]),'Assigned by','Assigned at','Completed by','Completed at','Created by','Created at','Updated by','Updated at'],
+    ...records.filter(r=>!r.deletedAt&&r.values.stage===stage).map((r,i)=>[i+1,...columns.map(key=>key==='assignedTo'?(r.assignedToName||r.values.assignedTo||''):r.values[key as keyof typeof r.values]||''),r.assignedByName||'',r.assignedAt?stamp(r.assignedAt):'',r.completedByName||'',r.completedAt?stamp(r.completedAt):'',r.createdByName,stamp(r.createdAt),r.updatedByName,stamp(r.updatedAt)])
   ]}));
 }

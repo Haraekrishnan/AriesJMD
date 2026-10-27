@@ -23,7 +23,7 @@ const databaseTime=()=>new Promise<string>((resolve,reject)=>{
     resolve(new Date(Date.now()+(typeof offset==='number'?offset:0)).toISOString());
   },reject,{onlyOnce:true});
 });
-export function createRecruitmentClient(user:User,permissions:RecruitmentPermissions){
+export function createRecruitmentClient(user:User,permissions:RecruitmentPermissions,assignees:readonly {id:string;name:string}[]=[]){
   return async function recruitmentCall<T>(data:Record<string,unknown>):Promise<T>{
     const active=user.status!=='locked'&&user.status!=='deactivated';
     const manage=active&&(user.role==='Admin'||permissions.manage);
@@ -32,7 +32,7 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
     if(!view)throw new Error('View Recruitment Sheet permission is required.');
     if(data.action==='list'){
       const snapshot=await get(ref(rtdb,recordsPath));
-      return Object.values(snapshot.val()||{}).filter(entry=>!(entry as RecordEntry).deletedAt).map(entry=>{const {history,...record}=entry as RecordEntry;return {...record,values:{...Object.fromEntries(fields.map(k=>[k,''])),...record.values}};}) as T;
+      return Object.values(snapshot.val()||{}).filter(entry=>!(entry as RecordEntry).deletedAt).map(entry=>{const {history,...record}=entry as RecordEntry;const completion=Object.values(history||{}).filter(item=>item.action==='Followed up').sort((a,b)=>b.at.localeCompare(a.at))[0];return {...record,...(!record.completedAt&&completion?{completedBy:completion.actorId,completedByName:completion.actorName,completedAt:completion.at}:{}),values:{...Object.fromEntries(fields.map(k=>[k,''])),...record.values}};}) as T;
     }
     if(data.action==='history'){
       if(typeof data.id!=='string'||!/^[-A-Za-z0-9_]{1,128}$/.test(data.id))throw new Error('Invalid candidate.');
@@ -67,7 +67,9 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
     const result=await recordTransaction(recordRef,(previous:RecordEntry|null)=>{
       try{
         if(data.id&&!previous){failure='Candidate no longer exists. Reload the sheet.';return;}
-        return saveCandidate(previous,values,Number(data.revision),{id:user.id,name:user.name},id,auditId,at,data.action==='followUp'?'Followed up':undefined);
+        if(values.assignedTo&&values.assignedTo!==previous?.values.assignedTo&&!assignees.some(person=>person.id===values.assignedTo)){failure='Select an active user with Manage Recruitment Sheet access.';return;}
+        if(data.action==='followUp'){values.followUp=user.name;values.lastFollowUpDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(at));}
+        return saveCandidate(previous,values,Number(data.revision),{id:user.id,name:user.name},id,auditId,at,data.action==='followUp'?'Followed up':undefined,values.assignedTo?(assignees.find(person=>person.id===values.assignedTo)?.name||previous?.assignedToName):'');
       }catch(error){failure=error instanceof Error?error.message:failure;return;}
     });
     if(!result.committed)throw new Error(failure);
