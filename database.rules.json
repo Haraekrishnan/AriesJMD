@@ -1,6 +1,16 @@
 {
   "rules": {
     "privateRecruitment": {
+      "layout": {
+        ".read": true,
+        ".write": "newData.exists()",
+        ".validate": "newData.hasChildren(['revision','updatedBy','updatedByName','updatedAt']) && newData.child('revision').isNumber() && newData.child('revision').val() === (data.exists() ? data.child('revision').val() + 1 : 1) && newData.child('updatedBy').isString() && newData.child('updatedByName').isString() && newData.child('updatedAt').isString()",
+        "extraColumns": {
+          "$index": {
+            ".validate": "newData.isString() && (newData.val() === 'age' || newData.val() === 'experience' || newData.val() === 'salary' || newData.val() === 'allowance' || newData.val() === 'remark' || newData.val() === 'followUp' || newData.val() === 'followUpChannel' || newData.val() === 'status' || newData.val() === 'travelDate' || newData.val() === 'travelNote')"
+          }
+        }
+      },
       ".read": false,
       ".write": false,
       "records": {

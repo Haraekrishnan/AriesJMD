@@ -4,10 +4,13 @@ import {rtdb} from '@/lib/rtdb';
 import type {User} from '@/lib/types';
 import {fields, saveCandidate, isCandidateLocked, changeCandidateLock, validateCandidate, type RecordEntry} from './model';
 export type RecruitmentPermissions={view:boolean;manage:boolean};
+import {readLayout,validateColumns,type SharedLayout} from './layout';
+const layoutPath='privateRecruitment/layout';
+export function subscribeRecruitmentLayout(user:User,permissions:RecruitmentPermissions,onChange:(layout:SharedLayout)=>void,onError:(error:Error)=>void){if(user.status==='locked'||user.status==='deactivated'||!(user.role==='Admin'||permissions.view||permissions.manage))return ()=>{};return onValue(ref(rtdb,layoutPath),snapshot=>{try{onChange(readLayout(snapshot.val()));}catch(e){onError(e as Error);}},onError);}
 const recordsPath='privateRecruitment/records';
 // Keep the record's cache alive until the transaction completes. A one-shot
 // get() removes its listener and may evict the value before the first update.
-async function recordTransaction(recordRef:ReturnType<typeof ref>,update:(previous:RecordEntry|null)=>RecordEntry|undefined){
+async function recordTransaction<T>(recordRef:ReturnType<typeof ref>,update:(previous:T|null)=>T|undefined){
   let stop:()=>void=()=>{};
   try{
     await new Promise<void>((resolve,reject)=>{
@@ -30,7 +33,15 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
     const view=active&&(manage||permissions.view);
     if(data.action==='session')return {view,manage,name:user.name} as T;
     if(!view)throw new Error('View Recruitment Sheet permission is required.');
+    if(data.action==='saveLayout'){
+      if(!manage)throw Error('Manage Recruitment Sheet permission is required to save shared columns.');
+      const extraColumns=validateColumns(data.extraColumns);if(!Number.isInteger(data.revision))throw Error('Invalid layout revision.');
+      const at=await databaseTime();let failure='Could not save columns.';
+      const result=await recordTransaction(ref(rtdb,layoutPath),(previous:SharedLayout|null)=>{if((previous?.revision||0)!==data.revision){failure='Someone saved a newer layout. Use saved layout before saving your changes.';return;}return {extraColumns,revision:(previous?.revision||0)+1,updatedBy:user.id,updatedByName:user.name,updatedAt:at};});
+      if(!result.committed)throw Error(failure);return readLayout(result.snapshot.val()) as T;
+    }
     if(data.action==='list'){
+
       const snapshot=await get(ref(rtdb,recordsPath));
       return Object.values(snapshot.val()||{}).filter(entry=>!(entry as RecordEntry).deletedAt).map(entry=>{const {history,...record}=entry as RecordEntry;const completion=Object.values(history||{}).filter(item=>item.action==='Followed up').sort((a,b)=>b.at.localeCompare(a.at))[0];return {...record,...(!record.completedAt&&completion?{completedBy:completion.actorId,completedByName:completion.actorName,completedAt:completion.at}:{}),values:{...Object.fromEntries(fields.map(k=>[k,''])),...record.values}};}) as T;
     }
@@ -43,7 +54,7 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
       if(user.role!=='Admin')throw Error('Only Admin can unlock or lock finalized candidates.');
       if(typeof data.id!=='string'||!/^[-A-Za-z0-9_]{1,128}$/.test(data.id)||!Number.isInteger(data.revision))throw Error('Invalid candidate or revision.');
       const recordRef=ref(rtdb,recordsPath+'/'+data.id),auditId=push(ref(rtdb,recordsPath+'/'+data.id+'/history')).key!,at=await databaseTime();let failure='Could not change candidate lock.';
-      const result=await recordTransaction(recordRef,previous=>{try{return changeCandidateLock(previous,Number(data.revision),user,data.action==='unlock',auditId,at);}catch(e){failure=e instanceof Error?e.message:failure;return;}});
+      const result=await recordTransaction(recordRef,(previous:RecordEntry|null)=>{try{return changeCandidateLock(previous,Number(data.revision),user,data.action==='unlock',auditId,at);}catch(e){failure=e instanceof Error?e.message:failure;return;}});
       if(!result.committed)throw Error(failure);return {id:data.id,record:result.snapshot.val()} as T;
     }
     if(data.action==='delete'){
