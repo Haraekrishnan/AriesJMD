@@ -3,9 +3,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
+function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void, boolean] {
   const [storedValue, setStoredValue] = useState<T>(initialValue);
   const [isClient, setIsClient] = useState(false);
+  const [hydratedKey, setHydratedKey] = useState<string | null>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -20,6 +21,8 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val
       } catch (error) {
         console.error(`Error reading localStorage key “${key}”:`, error);
         setStoredValue(initialValue);
+      } finally {
+        setHydratedKey(key);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -61,7 +64,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((val
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [key, initialValue, isClient]);
 
-  return [storedValue, setValue];
+  return [storedValue, setValue, hydratedKey === key];
 }
 
 export default useLocalStorage;

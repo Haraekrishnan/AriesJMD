@@ -85,7 +85,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-  const [storedUserId, setAppStoredUserId] = useLocalStorage<string | null>('aries-userId-v1', null);
+  const [storedUserId, setAppStoredUserId, sessionHydrated] = useLocalStorage<string | null>('aries-userId-v1', null);
   const [usersById, setUsersById] = useState<Record<string, User>>({});
   const [rolesById, setRolesById] = useState<Record<string, RoleDefinition>>({});
   const [passwordResetRequestsById, setPasswordResetRequestsById] = useState<Record<string, PasswordResetRequest>>({});
@@ -460,6 +460,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   useEffect(() => {
+    if (!sessionHydrated) return;
+    let active = true;
+    if (storedUserId) setLoading(true);
     const unsubscribers = [
       createDataListener('users', setUsersById),
       createDataListener('roles', setRolesById),
@@ -498,6 +501,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       const userRef = ref(rtdb, `users/${storedUserId}`);
       const unsubscribeUser = onValue(userRef, (snapshot) => {
+        if (!active) return;
         if(snapshot.exists()) {
           const userData = { id: snapshot.key!, ...snapshot.val() };
           setUser(currentUser => {
@@ -514,11 +518,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       unsubscribers.push(unsubscribeUser);
     }
 
-    return () => unsubscribers.forEach(unsubscribe => unsubscribe());
-  }, [storedUserId, logout]);
+    return () => {active = false;unsubscribers.forEach(unsubscribe => unsubscribe());};
+  }, [storedUserId, logout, sessionHydrated]);
 
   const contextValue: AuthContextType = {
-    user, loading, users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme, plannerNotificationCount,
+    user, loading: loading || !sessionHydrated || Boolean(storedUserId && user?.id !== storedUserId), users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme, plannerNotificationCount,
     login, logout, updateProfile, requestPasswordReset,
     resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, updateBranding, updateActiveTheme, addActivityLog, getVisibleUsers, getAssignableUsers, clearInventoryTransferHistory, markPlannerEventAsViewed,
     updateUserViewPreference, markFeatureAsViewed
