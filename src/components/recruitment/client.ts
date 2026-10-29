@@ -33,11 +33,46 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
     const view=active&&(manage||permissions.view);
     if(data.action==='session')return {view,manage,name:user.name} as T;
     if(!view)throw new Error('View Recruitment Sheet permission is required.');
+    if(data.action==='allHistory'){
+      if(user.role!=='Admin')throw Error('Only Admin can view the complete activity log.');
+      const [records,layout]=await Promise.all([get(ref(rtdb,recordsPath)),get(ref(rtdb,layoutPath))]);
+      return [...Object.values(records.val()||{}).flatMap(entry=>{const r=entry as RecordEntry;return Object.values(r.history||{}).map(a=>({...a,candidateId:r.id,candidateName:r.values.name,deleted:!!r.deletedAt}));}),...Object.values((layout.val() as SharedLayout)?.history||{}).map(a=>({...a,candidateName:'Worksheet settings'}))].sort((a,b)=>b.at.localeCompare(a.at)) as T;
+    }
+    if(data.action==='customColumn'||data.action==='columnFormat'){
+      if(user.role!=='Admin')throw Error('Only Admin can change custom columns or column formatting.');
+      const at=await databaseTime(),auditId=push(ref(rtdb,layoutPath+'/history')).key!;let failure='Could not change columns.';
+      const result=await recordTransaction(ref(rtdb,layoutPath),(previous:SharedLayout|null)=>{try{
+        const p=readLayout(previous);if(p.revision!==data.revision)throw Error('Layout changed. Refresh and retry.');
+        const custom=[...(p.customColumns||[])];let changes:Record<string,{before:string;after:string}>={},action='';let next={...p};
+        if(data.action==='customColumn'){
+          const id=String(data.columnId||'custom_'+auditId);if(!/^custom_[A-Za-z0-9_-]+$/.test(id))throw Error('Invalid column.');
+          const index=custom.findIndex(c=>c.id===id),name=String(data.name||'').trim();
+          if(data.operation!=='delete'&&(!name||name.length>60))throw Error('Column name must contain 1–60 characters.');
+          if(data.operation!=='add'&&index<0)throw Error('Column no longer exists.');
+          if(data.operation==='add'){if(custom.filter(c=>!c.deleted).length>=30)throw Error('Maximum 30 custom columns.');custom.push({id:id as typeof custom[number]["id"],name});next.extraColumns=[...p.extraColumns,id as typeof p.extraColumns[number]];action='Column created';}
+          else if(data.operation==='delete'){custom[index]={...custom[index],deleted:true};next.extraColumns=p.extraColumns.filter(k=>k!==id);action='Column deleted';}
+          else {custom[index]={...custom[index],name};action='Column renamed';}
+          changes[id]={before:p.customColumns?.find(c=>c.id===id)?.name||'',after:data.operation==='delete'?'Deleted':name};next.customColumns=custom;
+        }else{
+          const id=String(data.columnId),property=String(data.property),value=String(data.value||'');
+          if(!/^(color|backgroundColor)$/.test(property)||!/^$|^#[0-9a-fA-F]{6}$/.test(value)||!/^[-A-Za-z0-9_]+$/.test(id))throw Error('Invalid format.');
+          const before=p.columnFormats?.[id]||{};next.columnFormats={...p.columnFormats,[id]:{...before,[property]:value}};changes[id+' '+property]={before:(before as Record<string,string>)[property]||'',after:value};action='Column formatted';
+        }
+        return {...next,revision:p.revision+1,updatedBy:user.id,updatedByName:user.name,updatedAt:at,history:{...p.history,[auditId]:{id:auditId,action,actorId:user.id,actorName:user.name,at,changes}}};
+      }catch(e){failure=(e as Error).message;return;}});if(!result.committed)throw Error(failure);return readLayout(result.snapshot.val()) as T;
+    }
+    if(data.action==='format'){
+      if(!manage)throw Error('Manage Recruitment Sheet permission is required.');
+      if(typeof data.id!=='string'||!/^[-A-Za-z0-9_]+$/.test(data.id))throw Error('Invalid candidate.');
+      const key=String(data.columnId||'row'),property=String(data.property),value=String(data.value||'');if(!/^[-A-Za-z0-9_]+$/.test(key)||!['color','backgroundColor'].includes(property)||!/^$|^#[0-9a-fA-F]{6}$/.test(value))throw Error('Invalid format.');
+      const at=await databaseTime(),auditId=push(ref(rtdb,recordsPath+'/'+data.id+'/history')).key!;let failure='Could not format row.';
+      const result=await recordTransaction(ref(rtdb,recordsPath+'/'+data.id),(p:RecordEntry|null)=>{if(!p||p.deletedAt||p.revision!==data.revision||isCandidateLocked(p)){failure='Row changed or is locked. Refresh or unlock before formatting.';return;}const before=p.formatting?.[key]||{};return {...p,formatting:{...p.formatting,[key]:{...before,[property]:value}},revision:p.revision+1,updatedAt:at,updatedBy:user.id,updatedByName:user.name,history:{...p.history,[auditId]:{id:auditId,action:'Formatted',actorId:user.id,actorName:user.name,at,changes:{[key+' '+property]:{before:(before as Record<string,string>)[property]||'',after:value}}}}};});if(!result.committed)throw Error(failure);return {record:result.snapshot.val()} as T;
+    }
     if(data.action==='saveLayout'){
       if(!manage)throw Error('Manage Recruitment Sheet permission is required to save shared columns.');
       const extraColumns=validateColumns(data.extraColumns);if(!Number.isInteger(data.revision))throw Error('Invalid layout revision.');
-      const at=await databaseTime();let failure='Could not save columns.';
-      const result=await recordTransaction(ref(rtdb,layoutPath),(previous:SharedLayout|null)=>{if((previous?.revision||0)!==data.revision){failure='Someone saved a newer layout. Use saved layout before saving your changes.';return;}return {extraColumns,revision:(previous?.revision||0)+1,updatedBy:user.id,updatedByName:user.name,updatedAt:at};});
+      const at=await databaseTime(),auditId=push(ref(rtdb,layoutPath+'/history')).key!;let failure='Could not save columns.';
+      const result=await recordTransaction(ref(rtdb,layoutPath),(previous:SharedLayout|null)=>{if((previous?.revision||0)!==data.revision){failure='Someone saved a newer layout. Use saved layout before saving your changes.';return;}return {...previous,history:{...previous?.history,[auditId]:{id:auditId,action:'Visible columns changed',actorId:user.id,actorName:user.name,at,changes:{columns:{before:(previous?.extraColumns||[]).join(', '),after:extraColumns.join(', ')}}}},extraColumns,revision:(previous?.revision||0)+1,updatedBy:user.id,updatedByName:user.name,updatedAt:at};});
       if(!result.committed)throw Error(failure);return readLayout(result.snapshot.val()) as T;
     }
     if(data.action==='list'){
