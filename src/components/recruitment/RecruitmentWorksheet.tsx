@@ -12,6 +12,7 @@ type Call=<T>(data:Record<string,unknown>)=>Promise<T>;
 type Person={id:string;name:string};
 type PastePatch={version:number;values:Partial<Candidate>};
 const cleanFormat=(v?:CellFormat)=>Object.fromEntries(Object.entries(v||{}).filter(([,value])=>!!value));
+const columnLetter=(index:number)=>{let value=index+1,label='';while(value){value--;label=String.fromCharCode(65+value%26)+label;value=Math.floor(value/26);}return label;};
 const stages=['On Going','Finalized','Not Interested'];
 const primary:Field[]=['name','designation','assignedTo','documents','lastFollowUpDate','followUpDate','followUpOutcome','followUpNote','stage'];
 const extras=extraColumnFields;
@@ -126,7 +127,7 @@ export default function RecruitmentWorksheet({sharedLayout,layoutError,onLayoutS
  <div className={styles.contextHost} ref={setPanelHost}>{!selected&&<div className={styles.selectionBar}>Select a row to assign responsibility, complete a follow-up or view history.</div>}</div>
  {sheetError&&<p role="alert" className={styles.error}>{sheetError}</p>}
  <datalist id="recruitment-outcomes">{['Contacted','No answer','Documents requested','Interview scheduled','Confirmed','Not interested'].map(v=><option key={v} value={v}/>)}</datalist><datalist id="recruitment-channels">{['Phone','WhatsApp','Email','In person'].map(v=><option key={v} value={v}/>)}</datalist>
- <div className={`${styles.tableWrap} ${styles.excelGrid}`} data-extra={extraColumns.length>0}><table><colgroup><col style={{width:'2.7%'}}/><col style={{width:'3.1%'}}/>{visibleColumns.map(k=><FragmentCell key={k}>{k==='stage'&&<col style={{width:'10.4%'}}/>}<col style={{width:(widths[k]||10)+'%'}}/></FragmentCell>)}</colgroup><thead><tr className={styles.letters}><th></th><th>A</th>{headers.map((h,i)=><th key={h}>{String.fromCharCode(66+i)}</th>)}</tr><tr><th></th><th>#</th>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>
+ <div className={`${styles.tableWrap} ${styles.excelGrid}`} data-extra={extraColumns.length>0}><table><colgroup><col style={{width:'2.7%'}}/><col style={{width:'3.1%'}}/>{visibleColumns.map(k=><FragmentCell key={k}>{k==='stage'&&<col style={{width:'10.4%'}}/>}<col style={{width:(widths[k]||10)+'%'}}/></FragmentCell>)}</colgroup><thead><tr className={styles.letters}><th></th><th>A</th>{headers.map((h,i)=><th key={h}>{columnLetter(i+1)}</th>)}</tr><tr><th></th><th>#</th>{headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>
  {existing.map((r,i)=><RecruitmentSheetRow key={r.id} {...rowProps(r.id)} record={r} number={offset+i+1} onSaved={saved=>{if(saved.values.stage!==stage)setSelected(null);onSaved(saved);}}/>)}
  {canManage&&drafts.map((row,i)=><RecruitmentSheetRow key={'new-'+row.key} {...rowProps('new-'+row.key)} record={row.record} number={offset+existing.length+i+1} onSaved={saved=>{if(saved.values.stage!==stage)setSelected(null);setNewRows(previous=>{const next=previous.map(r=>r.key===row.key?{...r,record:saved}:r);if(next.every(r=>r.record))next.push({key:Math.max(...next.map(r=>r.key))+1});return next;});onSaved(saved);}}/>)}
  {!canManage&&!records.length&&<tr><td colSpan={headers.length+2}>No candidates match this view.</td></tr>}
