@@ -3,7 +3,7 @@ export type Field = typeof fields[number] | `custom_${string}`;
 export type Candidate = Record<Field, string>;
 export type Audit = {id:string;action:string;actorId:string;actorName:string;at:string;changes:Record<string, {before:string;after:string}>};
 export type CellFormat={color?:string;backgroundColor?:string};
-export type RecordEntry = {formatting?:Record<string,CellFormat>;finalizedUnlocked?:boolean;unlockedBy?:string;unlockedByName?:string;unlockedAt?:string;assignedToName?:string;assignedBy?:string;assignedByName?:string;assignedAt?:string;completedBy?:string;completedByName?:string;completedAt?:string;deletedAt?:string;deletedBy?:string;deletedByName?:string;id:string;values:Candidate;revision:number;createdBy:string;createdByName:string;createdAt:string;updatedBy:string;updatedByName:string;updatedAt:string;history:Record<string, Audit>};
+export type RecordEntry = {addedOrder?:string;formatting?:Record<string,CellFormat>;finalizedUnlocked?:boolean;unlockedBy?:string;unlockedByName?:string;unlockedAt?:string;assignedToName?:string;assignedBy?:string;assignedByName?:string;assignedAt?:string;completedBy?:string;completedByName?:string;completedAt?:string;deletedAt?:string;deletedBy?:string;deletedByName?:string;id:string;values:Candidate;revision:number;createdBy:string;createdByName:string;createdAt:string;updatedBy:string;updatedByName:string;updatedAt:string;history:Record<string, Audit>};
 export const isCandidateLocked=(record?:RecordEntry|null)=>record?.values.stage==='Finalized'&&record.finalizedUnlocked!==true;
 /**
  * Validate and whitelist editable sheet values before persistence.

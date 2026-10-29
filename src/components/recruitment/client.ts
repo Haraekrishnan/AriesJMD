@@ -4,6 +4,7 @@ import {rtdb} from '@/lib/rtdb';
 import type {User} from '@/lib/types';
 import {fields, saveCandidate, isCandidateLocked, changeCandidateLock, validateCandidate, type RecordEntry} from './model';
 export type RecruitmentPermissions={view:boolean;manage:boolean};
+import {orderedCandidates,moveCandidateOrder} from './worksheet-view';
 import {readLayout,validateColumns,type SharedLayout} from './layout';
 const layoutPath='privateRecruitment/layout';
 export function subscribeRecruitmentLayout(user:User,permissions:RecruitmentPermissions,onChange:(layout:SharedLayout)=>void,onError:(error:Error)=>void){if(user.status==='locked'||user.status==='deactivated'||!(user.role==='Admin'||permissions.view||permissions.manage))return ()=>{};return onValue(ref(rtdb,layoutPath),snapshot=>{try{onChange(readLayout(snapshot.val()));}catch(e){onError(e as Error);}},onError);}
@@ -33,6 +34,19 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
     const view=active&&(manage||permissions.view);
     if(data.action==='session')return {view,manage,name:user.name} as T;
     if(!view)throw new Error('View Recruitment Sheet permission is required.');
+    if(data.action==='resizeColumn'||data.action==='moveRow'){
+      if(!manage)throw Error('Manage Recruitment Sheet permission is required.');
+      const columnId=String(data.columnId||''),width=Number(data.width);
+      if(data.action==='resizeColumn'&&(!/^[-A-Za-z0-9_]+$/.test(columnId)||!Number.isFinite(width)||width<70||width>800))throw Error('Column width must be between 70 and 800 pixels.');
+      const measured=(data.widths&&typeof data.widths==='object'&&!Array.isArray(data.widths)?data.widths:{}) as Record<string,number>;if(Object.keys(measured).length>64||Object.entries(measured).some(([k,v])=>!/^[-A-Za-z0-9_]+$/.test(k)||!Number.isFinite(v)||v<70||v>800))throw Error('Invalid column widths.');
+      const records=data.action==='moveRow'?Object.values((await get(ref(rtdb,recordsPath))).val()||{}).filter(r=>!(r as RecordEntry).deletedAt) as RecordEntry[]:[];
+      const at=await databaseTime(),auditId=push(ref(rtdb,layoutPath+'/history')).key!;let failure='Could not save worksheet layout.';
+      const result=await recordTransaction(ref(rtdb,layoutPath),(previous:SharedLayout|null)=>{try{const p=readLayout(previous);let next={...p},changes:Record<string,{before:string;after:string}>={};
+        if(data.action==='resizeColumn'){next.columnWidths={...p.columnWidths,...measured,[columnId]:Math.round(width)};changes[columnId+' width']={before:String(p.columnWidths?.[columnId]||'Automatic'),after:String(Math.round(width))};}
+        else{const before=orderedCandidates(records,p.rowOrder).map(r=>r.id);next.rowOrder=moveCandidateOrder(before,String(data.id),String(data.targetId),String(data.direction));const candidate=records.find(r=>r.id===data.id);changes[candidate?.values.name||String(data.id)]={before:String(before.indexOf(String(data.id))+1),after:String(next.rowOrder.indexOf(String(data.id))+1)};}
+        return {...next,revision:p.revision+1,updatedBy:user.id,updatedByName:user.name,updatedAt:at,history:{...p.history,[auditId]:{id:auditId,action:data.action==='resizeColumn'?'Column resized':'Row reordered',actorId:user.id,actorName:user.name,at,changes}}};
+      }catch(e){failure=(e as Error).message;return;}});if(!result.committed)throw Error(failure);return readLayout(result.snapshot.val()) as T;
+    }
     if(data.action==='allHistory'){
       if(user.role!=='Admin')throw Error('Only Admin can view the complete activity log.');
       const [records,layout]=await Promise.all([get(ref(rtdb,recordsPath)),get(ref(rtdb,layoutPath))]);
@@ -124,7 +138,8 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
         if(data.id&&!previous){failure='Candidate no longer exists. Reload the sheet.';return;}
         if(values.assignedTo&&values.assignedTo!==previous?.values.assignedTo&&!assignees.some(person=>person.id===values.assignedTo)){failure='Select an active user with Manage Recruitment Sheet access.';return;}
         if(data.action==='followUp'){values.followUp=user.name;values.lastFollowUpDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(at));}
-        return saveCandidate(previous,values,Number(data.revision),{id:user.id,name:user.name},id,auditId,at,data.action==='followUp'?'Followed up':undefined,values.assignedTo?(assignees.find(person=>person.id===values.assignedTo)?.name||previous?.assignedToName):'');
+        const saved=saveCandidate(previous,values,Number(data.revision),{id:user.id,name:user.name},id,auditId,at,data.action==='followUp'?'Followed up':undefined,values.assignedTo?(assignees.find(person=>person.id===values.assignedTo)?.name||previous?.assignedToName):'');
+        return previous?saved:{...saved,addedOrder:typeof data.addedOrder==='string'&&/^\d{13}-\d{6}$/.test(data.addedOrder)?data.addedOrder:at};
       }catch(error){failure=error instanceof Error?error.message:failure;return;}
     });
     if(!result.committed)throw new Error(failure);
