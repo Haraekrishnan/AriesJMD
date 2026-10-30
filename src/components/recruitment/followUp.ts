@@ -1,7 +1,7 @@
 import type {RecordEntry} from './model';
 export const indiaToday=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 export function followUpState(date:string,stage:string,today=indiaToday()){
-  if(!date||stage!=='On Going')return '';
+  if(!date||stage==='Finalized'||stage==='Not Interested')return '';
   return date<today?'Overdue':date===today?'Today':'Scheduled';
 }
 export const shortDate=(date:string)=>date?new Date(date+'T00:00:00').toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';

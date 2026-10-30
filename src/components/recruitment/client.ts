@@ -5,7 +5,7 @@ import type {User} from '@/lib/types';
 import {fields, saveCandidate, isCandidateLocked, changeCandidateLock, validateCandidate, type RecordEntry} from './model';
 export type RecruitmentPermissions={view:boolean;manage:boolean};
 import {orderedCandidates,moveCandidateOrder} from './worksheet-view';
-import {readLayout,validateColumns,type SharedLayout} from './layout';
+import {readLayout,validateColumns,sheetNames,builtInSheets,validateSheetName,type SharedLayout} from './layout';
 const layoutPath='privateRecruitment/layout';
 export function subscribeRecruitmentLayout(user:User,permissions:RecruitmentPermissions,onChange:(layout:SharedLayout)=>void,onError:(error:Error)=>void){if(user.status==='locked'||user.status==='deactivated'||!(user.role==='Admin'||permissions.view||permissions.manage))return ()=>{};return onValue(ref(rtdb,layoutPath),snapshot=>{try{onChange(readLayout(snapshot.val()));}catch(e){onError(e as Error);}},onError);}
 const recordsPath='privateRecruitment/records';
@@ -48,13 +48,24 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
         return {...next,revision:p.revision+1,updatedBy:user.id,updatedByName:user.name,updatedAt:at,history:{...p.history,[auditId]:{id:auditId,action:data.action==='resizeColumn'?'Column resized':data.action==='moveColumn'?'Columns reordered':'Row reordered',actorId:user.id,actorName:user.name,at,changes}}};
       }catch(e){failure=(e as Error).message;return;}});if(!result.committed)throw Error(failure);return readLayout(result.snapshot.val()) as T;
     }
+    if(data.action==='sheet'){
+      const name=validateSheetName(data.name),at=await databaseTime(),auditId=push(ref(rtdb,layoutPath+'/history')).key!;
+      if(data.operation!=='add'&&data.operation!=='delete')throw Error('Invalid sheet action.');
+      if(data.operation==='delete'&&(user.role!=='Admin'||builtInSheets.includes(name)||data.confirmName!==name||data.deleteData!==true))throw Error('Only Admin can delete a custom sheet after confirming its name and data deletion.');
+      let failure='Could not update sheet.';
+      const mark=await recordTransaction(ref(rtdb,layoutPath),(previous:SharedLayout|null)=>{try{const p=readLayout(previous);if(data.operation==='add'){if([...builtInSheets,...Object.keys(p.sheets||{})].some(n=>n.toLowerCase()===name.toLowerCase()))throw Error('This sheet name already exists or was previously deleted. Choose another name.');if(sheetNames(p).length>=30)throw Error('Maximum 30 sheets.');}else if(!p.sheets?.[name]||p.sheets[name].deleted)throw Error('Sheet no longer exists.');return {...p,sheets:{...p.sheets,[name]:data.operation==='add'?{createdByName:user.name}:{...p.sheets?.[name],deleting:true}},revision:p.revision+1,updatedBy:user.id,updatedByName:user.name,updatedAt:at,history:{...p.history,[auditId]:{id:auditId,action:data.operation==='add'?'Sheet created':'Sheet deletion started',actorId:user.id,actorName:user.name,at,changes:{sheet:{before:data.operation==='add'?'':name,after:name}}}}};}catch(e){failure=(e as Error).message;return;}});
+      if(!mark.committed)throw Error(failure);if(data.operation==='add')return readLayout(mark.snapshot.val()) as T;
+      const entries=Object.values((await get(ref(rtdb,recordsPath))).val()||{}) as RecordEntry[];
+      for(const entry of entries.filter(r=>!r.deletedAt&&r.values.stage===name)){const removed=await recordTransaction(ref(rtdb,recordsPath+'/'+entry.id),(p:RecordEntry|null)=>{if(!p||p.deletedAt||p.values.stage!==name)return p||undefined;return {...p,deletedAt:at,deletedBy:user.id,deletedByName:user.name,updatedAt:at,updatedBy:user.id,updatedByName:user.name,revision:p.revision+1,history:{...p.history,[auditId]:{id:auditId,action:'Deleted with sheet',actorId:user.id,actorName:user.name,at,changes:{sheet:{before:name,after:'Deleted'}}}}};});if(!removed.committed)throw Error('Deletion interrupted. Retry deleting the sheet to finish.');}
+      const done=await recordTransaction(ref(rtdb,layoutPath),(previous:SharedLayout|null)=>{const p=readLayout(previous);return {...p,sheets:{...p.sheets,[name]:{...p.sheets?.[name],deleting:false,deleted:true}},revision:p.revision+1,updatedBy:user.id,updatedByName:user.name,updatedAt:at,history:{...p.history,[auditId+'done']:{id:auditId+'done',action:'Sheet deleted',actorId:user.id,actorName:user.name,at,changes:{sheet:{before:name,after:'Deleted with candidate records; audit retained'}}}}};});return readLayout(done.snapshot.val()) as T;
+    }
     if(data.action==='allHistory'){
       if(user.role!=='Admin')throw Error('Only Admin can view the complete activity log.');
       const [records,layout]=await Promise.all([get(ref(rtdb,recordsPath)),get(ref(rtdb,layoutPath))]);
       return [...Object.values(records.val()||{}).flatMap(entry=>{const r=entry as RecordEntry;return Object.values(r.history||{}).map(a=>({...a,candidateId:r.id,candidateName:r.values.name,deleted:!!r.deletedAt}));}),...Object.values((layout.val() as SharedLayout)?.history||{}).map(a=>({...a,candidateName:'Worksheet settings'}))].sort((a,b)=>b.at.localeCompare(a.at)) as T;
     }
     if(data.action==='customColumn'||data.action==='columnFormat'){
-      if(user.role!=='Admin')throw Error('Only Admin can change custom columns or column formatting.');
+      if(user.role!=='Admin'&&!(data.action==='customColumn'&&data.operation==='add'))throw Error('Only Admin can rename/delete custom columns or change column formatting.');
       const at=await databaseTime(),auditId=push(ref(rtdb,layoutPath+'/history')).key!;let failure='Could not change columns.';
       const result=await recordTransaction(ref(rtdb,layoutPath),(previous:SharedLayout|null)=>{try{
         const p=readLayout(previous);if(p.revision!==data.revision)throw Error('Layout changed. Refresh and retry.');
@@ -127,6 +138,7 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
     if(data.action!=='save'&&data.action!=='followUp')throw new Error('Unknown recruitment action.');
     if(!manage)throw new Error('Manage Recruitment Sheet permission is required.');
     const values=validateCandidate(data.values);
+    if(!builtInSheets.includes(values.stage)){const layout=readLayout((await get(ref(rtdb,layoutPath))).val());if(!sheetNames(layout).includes(values.stage))throw Error('The selected sheet no longer exists or is being deleted.');}
     if(data.action==='followUp'&&!data.id)throw new Error('Save the candidate before recording a follow-up.');
     const id=data.id||push(ref(rtdb,recordsPath)).key;
     if(typeof id!=='string'||!/^[-A-Za-z0-9_]{1,128}$/.test(id)||!Number.isInteger(data.revision)||Number(data.revision)<0)throw new Error('Invalid candidate or revision.');

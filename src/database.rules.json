@@ -24,7 +24,7 @@
         ".read": true,
         "$id": {
           ".write": "newData.exists()",
-          ".validate": "newData.hasChildren(['id', 'values', 'revision', 'createdBy', 'createdByName', 'createdAt', 'updatedBy', 'updatedByName', 'updatedAt', 'history']) && newData.child('id').val() === $id && newData.child('values/name').isString() && newData.child('values/name').val().length > 0 && newData.child('revision').isNumber()"
+          ".validate": "newData.hasChildren(['id', 'values', 'revision', 'createdBy', 'createdByName', 'createdAt', 'updatedBy', 'updatedByName', 'updatedAt', 'history']) && newData.child('id').val() === $id && newData.child('values/name').isString() && newData.child('values/name').val().length > 0 && newData.child('revision').isNumber() && (newData.child('deletedAt').exists() || newData.child('values/stage').val() === 'On Going' || newData.child('values/stage').val() === 'Finalized' || newData.child('values/stage').val() === 'Not Interested' || (root.child('privateRecruitment/layout/sheets').child(newData.child('values/stage').val()).exists() && root.child('privateRecruitment/layout/sheets').child(newData.child('values/stage').val()).child('deleted').val() !== true && root.child('privateRecruitment/layout/sheets').child(newData.child('values/stage').val()).child('deleting').val() !== true))"
         }
       }
     },

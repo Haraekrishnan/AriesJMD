@@ -1,5 +1,5 @@
 import type {RecordEntry,Field} from './model';
-import type {SharedLayout} from './layout';
+import {sheetNames,type SharedLayout} from './layout';
 import {reportColumns,reportPalette as p,reportCellStyle,reportGroup} from './report-design';
 import {indiaToday} from './followUp';
 export async function buildRecruitmentWorkbook(records:RecordEntry[],fields:Field[],labels:Record<Field,string>,layout:SharedLayout|null,preparedBy:string,now=new Date()){
@@ -9,7 +9,7 @@ export async function buildRecruitmentWorkbook(records:RecordEntry[],fields:Fiel
  const titles=['No.',...unique.map(k=>k==='name'?'Candidate name':k==='designation'?'Trade':labels[k]||extra.find(c=>c.id===k)?.name||k),...audit];
  const stamp=(value:string)=>value?new Date(value).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}):'';
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
- for(const stage of ['On Going','Finalized','Not Interested']){
+ for(const stage of sheetNames(layout)){
  const sheet=book.addWorksheet(stage,{properties:{tabColor:{argb:stage==='Finalized'?'FF5AB887':stage==='Not Interested'?'FFDC758A':'FF173B60'}},views:[{state:'frozen',xSplit:2,ySplit:5,showGridLines:false}],pageSetup:{orientation:'landscape',paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,printTitlesRow:'1:5'}});
  sheet.columns=titles.map((title,i)=>({width:i===0?7:(layout?.columnWidths?.[unique[i-1]]?Math.max(10,layout.columnWidths[unique[i-1]]/7):['Candidate name','Follow-up note','Remark','Travel / joining note'].includes(title)?32:22)}));
  const fill=(hex:string)=>({type:'pattern' as const,pattern:'solid' as const,fgColor:{argb:'FF'+hex}});
