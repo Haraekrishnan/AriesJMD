@@ -1,6 +1,13 @@
 {
   "rules": {
     "privateRecruitment": {
+      "presence": {
+        ".read": true,
+        "$session": {
+          ".write": true,
+          ".validate": "newData.hasChildren(['userId','name','candidateId','field','at']) && newData.child('userId').isString() && newData.child('name').isString() && newData.child('candidateId').isString() && newData.child('field').isString() && newData.child('at').isNumber()"
+        }
+      },
       "layout": {
         ".read": true,
         ".write": "newData.exists()",
