@@ -7,4 +7,4 @@ export function readLayout(value:SharedLayout|null):SharedLayout{return value?{.
 
 export const builtInSheets=['On Going','Finalized','Not Interested'];
 export function sheetNames(layout?:SharedLayout|null){return [...builtInSheets,...Object.keys(layout?.sheets||{}).filter(name=>!layout?.sheets?.[name].deleted&&!layout?.sheets?.[name].deleting)];}
-export function validateSheetName(value:unknown){const name=String(value||'').trim();if(!name||name.length>31||/[.\/$#\[\]:*?\\]/.test(name)||name.startsWith("'")||name.endsWith("'"))throw Error('Use 1–31 characters without . / $ # [ ] : * ? or backslash.');return name;}
+export function validateSheetName(value:unknown){const name=String(value||'').trim();if(name.toLowerCase()==='history')throw Error('History is reserved by Excel. Choose another sheet name.');if(/[\u0000-\u001f\u007f]/.test(name))throw Error('Sheet names cannot contain control characters.');if(!name||name.length>31||/[.\/$#\[\]:*?\\]/.test(name)||name.startsWith("'")||name.endsWith("'"))throw Error('Use 1–31 characters without . / $ # [ ] : * ? or backslash.');return name;}
