@@ -4,7 +4,7 @@ import {reportColumns,reportPalette as p,reportCellStyle,reportGroup} from './re
 import {indiaToday} from './followUp';
 export async function buildRecruitmentWorkbook(records:RecordEntry[],fields:Field[],labels:Record<Field,string>,layout:SharedLayout|null,preparedBy:string,now=new Date()){
  const ExcelJS=await import('exceljs');const book=new ExcelJS.Workbook();book.creator=preparedBy;book.created=now;
- const extra=(layout?.customColumns||[]).filter(c=>!c.deleted);const keys=[...reportColumns,...fields.filter(k=>!reportColumns.includes(k)),...extra.map(c=>c.id)];const unique=[...new Set(keys)];
+ const extra=(layout?.customColumns||[]).filter(c=>!c.deleted);const keys=[...reportColumns,...fields.filter(k=>!reportColumns.includes(k)),...extra.map(c=>c.id)];const unique=[...new Set([...(layout?.columnOrder||[]).filter(k=>keys.includes(k)),...keys])];
  const audit=['Assigned by','Assigned at','Completed by','Completed at','Created by','Created at','Updated by','Updated at'];
  const titles=['No.',...unique.map(k=>k==='name'?'Candidate name':k==='designation'?'Trade':labels[k]||extra.find(c=>c.id===k)?.name||k),...audit];
  const stamp=(value:string)=>value?new Date(value).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}):'';

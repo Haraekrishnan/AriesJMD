@@ -34,7 +34,7 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
     const view=active&&(manage||permissions.view);
     if(data.action==='session')return {view,manage,name:user.name} as T;
     if(!view)throw new Error('View Recruitment Sheet permission is required.');
-    if(data.action==='resizeColumn'||data.action==='moveRow'){
+    if(data.action==='resizeColumn'||data.action==='moveRow'||data.action==='moveColumn'){
       if(!manage)throw Error('Manage Recruitment Sheet permission is required.');
       const columnId=String(data.columnId||''),width=Number(data.width);
       if(data.action==='resizeColumn'&&(!/^[-A-Za-z0-9_]+$/.test(columnId)||!Number.isFinite(width)||width<70||width>800))throw Error('Column width must be between 70 and 800 pixels.');
@@ -43,8 +43,9 @@ export function createRecruitmentClient(user:User,permissions:RecruitmentPermiss
       const at=await databaseTime(),auditId=push(ref(rtdb,layoutPath+'/history')).key!;let failure='Could not save worksheet layout.';
       const result=await recordTransaction(ref(rtdb,layoutPath),(previous:SharedLayout|null)=>{try{const p=readLayout(previous);let next={...p},changes:Record<string,{before:string;after:string}>={};
         if(data.action==='resizeColumn'){next.columnWidths={...p.columnWidths,...measured,[columnId]:Math.round(width)};changes[columnId+' width']={before:String(p.columnWidths?.[columnId]||'Automatic'),after:String(Math.round(width))};}
+        else if(data.action==='moveColumn'){const allowed=[...fields,...(p.customColumns||[]).filter(c=>!c.deleted).map(c=>c.id)];const visible=data.visibleColumns;if(!Array.isArray(visible)||visible.some(k=>!allowed.includes(k))||new Set(visible).size!==visible.length||!visible.includes(columnId)||!visible.includes(data.targetId))throw Error('Invalid column order.');const order=[...new Set([...(p.columnOrder||[]),...visible])] as typeof allowed;const before=order.join(', ');const remaining=order.filter(k=>k!==columnId);remaining.splice(remaining.indexOf(String(data.targetId) as typeof allowed[number])+(data.direction==='after'?1:0),0,columnId as typeof allowed[number]);next.columnOrder=remaining;changes.columns={before,after:remaining.join(', ')};}
         else{const before=orderedCandidates(records,p.rowOrder).map(r=>r.id);next.rowOrder=moveCandidateOrder(before,String(data.id),String(data.targetId),String(data.direction));const candidate=records.find(r=>r.id===data.id);changes[candidate?.values.name||String(data.id)]={before:String(before.indexOf(String(data.id))+1),after:String(next.rowOrder.indexOf(String(data.id))+1)};}
-        return {...next,revision:p.revision+1,updatedBy:user.id,updatedByName:user.name,updatedAt:at,history:{...p.history,[auditId]:{id:auditId,action:data.action==='resizeColumn'?'Column resized':'Row reordered',actorId:user.id,actorName:user.name,at,changes}}};
+        return {...next,revision:p.revision+1,updatedBy:user.id,updatedByName:user.name,updatedAt:at,history:{...p.history,[auditId]:{id:auditId,action:data.action==='resizeColumn'?'Column resized':data.action==='moveColumn'?'Columns reordered':'Row reordered',actorId:user.id,actorName:user.name,at,changes}}};
       }catch(e){failure=(e as Error).message;return;}});if(!result.committed)throw Error(failure);return readLayout(result.snapshot.val()) as T;
     }
     if(data.action==='allHistory'){
