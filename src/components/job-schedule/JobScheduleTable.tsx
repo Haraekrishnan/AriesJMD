@@ -9,14 +9,15 @@ import { Button } from '../ui/button';
 import { CheckCircle2, Edit, Lock } from 'lucide-react';
 import { otherScheduleAssignments } from './schedule-worksheet';
 import styles from './schedule-worksheet.module.css';
+import design from './schedule-page.module.css';
 
-interface JobScheduleTableProps { selectedDate: string; schedule?: JobSchedule; onDirtyChange?: (dirty: boolean) => void; }
+interface JobScheduleTableProps { selectedDate: string; schedule?: JobSchedule; onDirtyChange?: (dirty: boolean) => void; onRename?: () => void; }
 
 export default function JobScheduleTable(props: JobScheduleTableProps) {
   // Changing schedule/date starts an independent editing session.
   return <ScheduleInstance key={`${props.selectedDate}:${props.schedule?.id || 'new'}`} {...props} />;
 }
-function ScheduleInstance({ selectedDate, schedule, onDirtyChange }: JobScheduleTableProps) {
+function ScheduleInstance({ selectedDate, schedule, onDirtyChange, onRename }: JobScheduleTableProps) {
   const { jobSchedules, can } = useAppContext();
   const [editing, setEditing] = useState(!schedule?.items?.length);
   const [savedSnapshot, setSavedSnapshot] = useState<JobSchedule | null>(null);
@@ -29,10 +30,9 @@ function ScheduleInstance({ selectedDate, schedule, onDirtyChange }: JobSchedule
       schedule={current} selectedDate={selectedDate} globallyAssignedIds={otherIds} onDirtyChange={onDirtyChange}
       onSaved={saved => { setSavedSnapshot(saved); setEditing(false); }} onCancel={() => setEditing(false)}
     /> : <>
-      <div className={styles.heading}>
-        <div><h2>{current?.name || 'Schedule'} <span className={styles.saved}>{current?.isLocked ? <><Lock size={14} /> Locked</> : <><CheckCircle2 size={14} /> Saved</>}</span></h2>
-          <p>{selectedDate.split('-').reverse().join('-')} · {current?.items?.length || 0} jobs · {count} personnel</p></div>
-        {canEdit && <Button variant="outline" onClick={() => setEditing(true)}><Edit className="mr-2 h-4 w-4" />Edit Schedule</Button>}
+      <div className={design.compactHeading}>
+        <div><span className={styles.saved}>{current?.isLocked ? <><Lock size={14} /> Locked</> : <><CheckCircle2 size={14} /> Saved</>}</span></div>
+        {canEdit && <div className="flex gap-2"><Button variant="ghost" onClick={onRename}>Rename</Button><Button variant="outline" onClick={() => setEditing(true)}><Edit className="mr-2 h-4 w-4" />Edit Schedule</Button></div>}
       </div>
       <ReadOnlyJobSchedule schedule={current} />
     </>}

@@ -22,6 +22,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { rtdb } from '@/lib/rtdb';
+import ManpowerCheckDialog from '@/components/job-schedule/ManpowerCheckDialog';
+import design from '@/components/job-schedule/schedule-page.module.css';
+import { Input } from '@/components/ui/input';
 import { ref, remove } from 'firebase/database';
 
 export default function JobSchedulePage() {
@@ -34,6 +37,16 @@ export default function JobSchedulePage() {
     const [scheduleDirty, setScheduleDirty] = useState(false);
     const canLeaveDraft = () => !scheduleDirty || window.confirm("Discard unsaved schedule changes? The saved schedule will remain unchanged.");
     
+    const [checkOpen, setCheckOpen] = useState(false);
+    const [renameOpen, setRenameOpen] = useState(false);
+    const [newName, setNewName] = useState('');
+    const renameSchedule = async () => {
+        if (!activeSchedule || !can.manage_job_schedule || isLocked || !newName.trim() || scheduleBusy || !canLeaveDraft()) return;
+        setScheduleBusy(true);
+        try { await saveJobSchedule({...activeSchedule, name: newName.trim(), updatedAt: new Date().toISOString()}); setRenameOpen(false); toast({title:'Schedule renamed'}); }
+        catch { toast({variant:'destructive', title:'Could not rename schedule'}); }
+        finally { setScheduleBusy(false); }
+    };
     // Batch Export State
     const [isBatchExportOpen, setIsBatchExportOpen] = useState(false);
     const [batchDateRange, setBatchDateRange] = useState<DateRange | undefined>();
@@ -205,11 +218,11 @@ export default function JobSchedulePage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className={design.page}>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Job Schedule</h1>
-                    <p className="text-muted-foreground">{can.manage_job_schedule ? "Plan and view the daily job schedule." : "View-only access: choose a date to view or download its schedules."}</p>
+                    <p className={design.breadcrumb}>Operations / Job schedule</p><h1 className="text-3xl font-bold tracking-tight">Job Schedule</h1>
+                    <p className="text-muted-foreground">{can.manage_job_schedule ? "Daily job allocation and manpower coverage." : "View-only access: choose a date to view or download its schedules."}</p>
                 </div>
                 <div className="flex gap-2">
                     <Dialog open={isBatchExportOpen} onOpenChange={setIsBatchExportOpen}>
@@ -233,55 +246,34 @@ export default function JobSchedulePage() {
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+                    {can.manage_job_schedule && <Button onClick={handleAddSchedule} disabled={scheduleBusy}><PlusCircle className="mr-2 h-4 w-4"/>Add schedule</Button>}
                 </div>
             </div>
 
-            {/* Global Headcount Summary for the date */}
-            {globalHeadcountSummary.total > 0 && (
-                <div className="p-4 bg-muted/30 border rounded-lg shadow-sm">
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-                        <div className="flex items-center gap-2 mr-2">
-                            <Users className="h-5 w-5 text-primary" />
-                            <span className="font-bold text-sm uppercase tracking-wider">Daily Headcount Summary:</span>
-                            <Badge variant="default" className="ml-1 text-sm font-black px-3">
-                                {globalHeadcountSummary.total} Total
-                            </Badge>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-3">
-                            {globalHeadcountSummary.counts.map(([trade, count]) => (
-                                <div key={trade} className="flex items-center gap-1.5 px-3 py-1 bg-background border rounded-full shadow-sm text-xs font-semibold">
-                                    <span className="text-muted-foreground">{trade}:</span>
-                                    <span className="text-primary font-black">{count}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-            
             <Card>
-                <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4">
+                <CardHeader className={design.dateToolbar}>
                     <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={() => changeDay(-1)}>
+                        <Button variant="outline" size="icon" onClick={() => changeDay(-1)} aria-label="Previous day">
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
                         <Popover>
                             <PopoverTrigger asChild>
                               <Button
                                 variant={'outline'}
-                                className={cn('w-full sm:w-[240px] justify-start text-left font-normal text-lg py-6')}
+                                className={cn('justify-start text-left font-semibold')}
                               >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {format(selectedDate, 'PPP')}
+                                {format(selectedDate, 'EEE, dd MMM yyyy')}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
                               <Calendar mode="single" selected={selectedDate} onSelect={(day) => { if (day && canLeaveDraft()) setSelectedDate(day); }} initialFocus />
                             </PopoverContent>
                         </Popover>
-                        <Button variant="outline" size="icon" onClick={() => changeDay(1)}>
+                        <Button variant="outline" size="icon" onClick={() => changeDay(1)} aria-label="Next day">
                             <ChevronRight className="h-4 w-4" />
                         </Button>
+                        <Button variant="ghost" onClick={() => {if(canLeaveDraft()) setSelectedDate(new Date());}}>Today</Button>
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 w-full sm:w-auto">
                         <div className="space-y-1.5">
@@ -297,20 +289,25 @@ export default function JobSchedulePage() {
                             )}
                             <Button onClick={() => handleExport('excel')} variant="outline" size="sm" disabled={!activeSchedule}><FileDown className="mr-2 h-4 w-4"/> Excel</Button>
                             <Button onClick={() => handleExport('pdf')} variant="outline" size="sm" disabled={!activeSchedule}><FileDown className="mr-2 h-4 w-4"/> PDF</Button>
-                            {can.manage_job_schedule && (
-                                <Button onClick={handleAddSchedule} disabled={scheduleBusy} size="sm"><PlusCircle className="mr-2 h-4 w-4"/> Add Schedule</Button>
-                            )}
+
                         </div>
                     </div>
                 </CardHeader>
-                <CardContent className="p-0 sm:p-4">
+                <div className={design.metrics}>
+                    <div><span>Scheduled people</span><strong>{globalHeadcountSummary.total}</strong><small>Unique people across all schedules</small></div>
+                    <div><span>Jobs</span><strong>{schedulesForDate.reduce((n,s) => n + (s.items || []).length,0)}</strong><small>Daily job allocations</small></div>
+                    <div><span>Schedules</span><strong>{schedulesForDate.length}</strong><small>{format(selectedDate,'dd MMM yyyy')}</small></div>
+                    <button onClick={() => setCheckOpen(true)}><Users size={22}/><strong>Manpower check ↗</strong><span>Review missing assignments</span></button>
+                </div>
+                <details className={design.headcount}><summary>Headcount by trade <span>{globalHeadcountSummary.total} people</span></summary><div>{globalHeadcountSummary.counts.map(([trade,count]) => <span key={trade}>{trade} <b>{count}</b></span>)}</div></details>
+                <CardContent className={design.scheduleContent}>
                     {schedulesForDate.length > 0 ? (
                         <Tabs value={activeScheduleId || ''} onValueChange={id => { if (id !== activeScheduleId && canLeaveDraft()) setActiveScheduleId(id); }} className="w-full">
                             <TabsList className="px-4 bg-muted/20 h-auto flex-wrap justify-start border-b rounded-none mb-4 gap-2 py-2">
                                 {schedulesForDate.map((s, i) => (
                                     <div key={s.id} className="relative group">
                                         <TabsTrigger value={s.id} className="data-[state=active]:bg-background">
-                                            {s.name || `Schedule ${i + 1}`}
+                                            {s.name || `Schedule ${i + 1}`} · {new Set((s.items || []).flatMap(item => item.manpowerIds || [])).size} people
                                         </TabsTrigger>
                                         {can.manage_job_schedule && (
                                             <AlertDialog>
@@ -340,6 +337,7 @@ export default function JobSchedulePage() {
                                         selectedDate={format(selectedDate, 'yyyy-MM-dd')} 
                                         schedule={s}
                                         onDirtyChange={setScheduleDirty}
+                                        onRename={() => {setNewName(s.name || "Schedule");setRenameOpen(true);}}
                                     />
                                 </TabsContent>
                             ))}
@@ -353,6 +351,8 @@ export default function JobSchedulePage() {
                     )}
                 </CardContent>
             </Card>
+            {checkOpen && <ManpowerCheckDialog date={format(selectedDate,'yyyy-MM-dd')} onClose={() => setCheckOpen(false)} />}
+            <Dialog open={renameOpen} onOpenChange={setRenameOpen}><DialogContent><DialogHeader><DialogTitle>Rename schedule</DialogTitle><DialogDescription>Choose a clear name for this schedule.</DialogDescription></DialogHeader><Label htmlFor="schedule-name">Schedule name</Label><Input id="schedule-name" value={newName} maxLength={80} onChange={e => setNewName(e.target.value)} /><DialogFooter><Button variant="outline" onClick={() => setRenameOpen(false)}>Cancel</Button><Button disabled={!newName.trim() || scheduleBusy} onClick={renameSchedule}>Save name</Button></DialogFooter></DialogContent></Dialog>
         </div>
     );
 }
