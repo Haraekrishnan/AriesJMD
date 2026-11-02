@@ -251,7 +251,7 @@ export default function JobSchedulePage() {
             </div>
 
             <Card>
-                <CardHeader className={design.dateToolbar}>
+                <div className={design.dateToolbar}>
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="icon" onClick={() => changeDay(-1)} aria-label="Previous day">
                             <ChevronLeft className="h-4 w-4" />
@@ -292,7 +292,7 @@ export default function JobSchedulePage() {
 
                         </div>
                     </div>
-                </CardHeader>
+                </div>
                 <div className={design.metrics}>
                     <div><span>Scheduled people</span><strong>{globalHeadcountSummary.total}</strong><small>Unique people across all schedules</small></div>
                     <div><span>Jobs</span><strong>{schedulesForDate.reduce((n,s) => n + (s.items || []).length,0)}</strong><small>Daily job allocations</small></div>

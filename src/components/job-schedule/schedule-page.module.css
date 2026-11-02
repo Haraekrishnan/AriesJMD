@@ -21,3 +21,10 @@
 .scheduleContent { position:relative; }.compactHeading { display:flex; align-items:center; gap:10px; position:absolute; right:12px; top:8px; }.scheduleContent [role=tablist] { padding-right:340px; margin-bottom:0; min-height:52px; background:white; }.scheduleContent [role=tab][data-state=active] { color:#0964dd; border-bottom:3px solid #0964dd; box-shadow:none; border-radius:0; }.scheduleContent section { border:0; border-radius:0; }.filters input { flex:0 1 400px; margin-right:auto; }.table td { padding:9px 10px; }.table button { border:0; background:transparent; min-height:0; }.metrics > div,.metrics > button { min-height:78px; }.metrics > button strong { font-size:15px; }.metrics > button span { font-size:12px; }
 @media(max-width:900px) { .compactHeading { position:static; justify-content:flex-end; padding:10px; flex-wrap:wrap; border-bottom:1px solid #e0e7ef; }.scheduleContent [role=tablist] { padding-right:10px; }.filters input { flex:1 1 220px; } }
 .page { font-size:14px; }.page button { font-size:13px; }.headcount summary { display:list-item; }.headcount summary span { display:inline-block; }
+/* Use an ordinary flex toolbar: CardHeader's flex-col stacked desktop controls. */
+.page { gap:12px; }
+.breadcrumb { margin-bottom:4px; }
+.dateToolbar { flex-direction:row; align-items:center; gap:10px; padding:0 0 10px; }
+.dateToolbar > div { margin-top:0; }
+.metrics > div,.metrics > button { min-height:70px; padding-top:10px; padding-bottom:10px; }
+@media(max-width:700px) { .dateToolbar { align-items:flex-start; }.dateToolbar > div { max-width:100%; } }
