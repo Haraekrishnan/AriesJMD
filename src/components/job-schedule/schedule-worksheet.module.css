@@ -65,3 +65,6 @@
 .orderPerson:disabled { opacity:.3; cursor:default; }
 .orderPerson:focus-visible { outline:2px solid #2563eb; outline-offset:1px; }
 @media(max-width:640px) { .orderPerson { width:30px; height:32px; } }
+/* Match the saved schedule palette while retaining the worksheet editing controls. */
+.sheet th { background:#1b3b5d; color:#fff; border-color:#34516f; }
+.sheet tbody tr:nth-child(even) { --row-background:#f6f8fb; }
