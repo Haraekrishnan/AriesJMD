@@ -1,5 +1,6 @@
 'use client';
 import styles from './comparison-view.module.css';
+import RequestAttachmentControl from './RequestAttachmentControl';
 import { exportToExcel } from './exportQuotationToExcel';
 import { useMemo, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '../ui/dialog';
@@ -176,7 +177,7 @@ export default function ViewQuotationDialog({ isOpen, setIsOpen, quotation: init
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className={styles.dialog} overlayClassName="bg-black/20" style={{'--view-left':`${frame.left}px`,'--view-top':`${frame.top}px`} as React.CSSProperties}>
         <DialogHeader className={styles.header}>
-          <DialogTitle>{quotation.title} <span className={styles.request}>{quotation.requestNumber || 'Assigning…'}</span></DialogTitle>
+          <div className="flex flex-wrap items-center gap-2 pr-8"><DialogTitle>{quotation.title} <span className={styles.request}>{quotation.requestNumber || 'Assigning…'}</span></DialogTitle><RequestAttachmentControl key={quotation.id} requestNumber={quotation.requestNumber} value={quotation.attachment} onSave={canFinalize && (!quotation.isLocked || user?.role==='Admin') ? async attachment=>{const saved=await updateQuotation({...quotation,attachment},error=>{throw error;});if(!saved)throw new Error('Attachment not saved. Please retry.');}:undefined} /></div>
           <DialogDescription>
             Created by {creator?.name || 'Unknown'} on {format(parseISO(quotation.createdAt), 'PPP')}
           </DialogDescription>

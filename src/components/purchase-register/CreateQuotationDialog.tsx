@@ -16,7 +16,8 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Trash2, X, Upload, Loader2, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Fragment as ReactFragment, useEffect, useState, useRef, type CSSProperties } from 'react';
-import type { Quotation } from '@/lib/types';
+import RequestAttachmentControl from './RequestAttachmentControl';
+import type { Quotation, RequestAttachment } from '@/lib/types';
 import { usePurchase } from '@/contexts/purchase-provider';
 import AddVendorDialog from '../vendor-management/AddVendorDialog';
 
@@ -98,6 +99,7 @@ const VendorTotal = ({ vendorIndex, control }: { vendorIndex: number; control: a
 
 export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuotation }: { isOpen: boolean; setIsOpen: (open: boolean) => void; existingQuotation?: Quotation | null }) {
   const { vendors, addQuotation, updateQuotation } = usePurchase();
+  const [attachment,setAttachment]=useState<RequestAttachment|null>(null);
   const { toast } = useToast();
   const isEditMode = !!existingQuotation;
 
@@ -148,6 +150,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
 
   useEffect(() => {
     if (isOpen) {
+        setAttachment(existingQuotation?.attachment || null);
         setErrorPopup(null);
         setCostVendor(null); setPasteOpen(false); setPendingImport(null); activeCell.current={row:0,column:0};
         blankIds.current.clear(); setSelectedRow(0); setFindItem(''); setSeparateQuantities(hasSeparateQuantities((existingQuotation?.vendors || []).map(v=>({...v,quotes:(existingQuotation?.items || []).map(item=>v.quotes.find(q=>q.itemId===item.itemId) || {quantity:1})}))));
@@ -215,9 +218,9 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     try {
         let success = false;
         if (isEditMode && existingQuotation) {
-            success = await updateQuotation({ ...existingQuotation, ...data }, error => { throw error; });
+            success = await updateQuotation({ ...existingQuotation, ...data, attachment }, error => { throw error; });
         } else {
-            success = await addQuotation(data, error => { throw error; });
+            success = await addQuotation({...data,attachment}, error => { throw error; });
         }
         
         if (success) {
@@ -366,7 +369,7 @@ export default function CreateQuotationDialog({ isOpen, setIsOpen, existingQuota
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className={styles.dialog} overlayClassName="bg-black/20" style={{'--sheet-left':`${frame.left}px`,'--sheet-top':`${frame.top}px`} as CSSProperties} onInteractOutside={e=>e.preventDefault()}>
         <DialogHeader className={styles.header}>
-          <DialogTitle>{isEditMode?'Edit':'New'} price comparison <span className={styles.request}>{existingQuotation?.requestNumber || 'Number assigned on save'}</span></DialogTitle>
+          <div className="flex flex-wrap items-center gap-2 pr-8"><DialogTitle>{isEditMode?'Edit':'New'} price comparison <span className={styles.request}>{existingQuotation?.requestNumber || 'Number assigned on save'}</span></DialogTitle><RequestAttachmentControl key={existingQuotation?.id || 'new'} requestNumber={existingQuotation?.requestNumber} value={attachment} draft onSave={async value=>setAttachment(value)} /></div>
           <DialogDescription>Enter items once. Compare vendor offers in one worksheet.</DialogDescription>
         </DialogHeader>
         <form ref={formRef} className={styles.form} noValidate onKeyDown={event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();formRef.current?.requestSubmit();}else if(event.key==='Enter' && event.target instanceof HTMLInputElement && !event.target.hasAttribute('data-row'))event.preventDefault();}} onSubmit={form.handleSubmit(onSubmit,errors=>setErrorPopup({title:'Please correct these details',messages:comparisonValidationMessages(errors,getValues()),paths:errorPaths(errors)}))}>

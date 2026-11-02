@@ -1322,7 +1322,18 @@ export type QuotationVendorDetails = {
 
 export type QuotationStatus = 'Pending' | 'Approved' | 'PO Sent' | 'Partially Received' | 'Completed' | 'Rejected';
 
+export type RequestAttachment = {
+ name: string;
+ url: string;
+ addedById: string;
+ addedByName: string;
+ addedAt: string;
+ updatedByName: string;
+ updatedAt: string;
+};
+
 export type Quotation = {
+    attachment?: RequestAttachment | null;
     id: string;
     requestNumber?: string;
     title: string;
