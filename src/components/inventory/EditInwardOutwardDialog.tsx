@@ -1,4 +1,6 @@
 'use client';
+import InwardEquipmentInputs from './InwardEquipmentInputs';
+import { equipmentPayload, readEquipmentFields } from './inward-equipment-fields';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,22 +11,22 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import type { InwardOutwardRecord, InventoryItem } from '@/lib/types';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { DatePickerInput } from '../ui/date-picker-input';
 import { parseISO, isValid } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
-import { PlusCircle, Trash2, ChevronsUpDown, Check } from 'lucide-react';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { useInwardOutward } from '@/contexts/inward-outward-provider';
-import { inwardLinkedItem } from './inward-item-names';
+import { useEquipmentOrganization } from '../equipment/use-equipment-organization';
+import { previewDestination, inwardChoices, resolveInwardChoice, inwardLinkedItem } from './inward-item-names';
 import { useInventory } from '@/contexts/inventory-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
-import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/auth-provider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const newItemSchema = z.object({
+  equipment: z.record(z.string()).optional(),
   id: z.string(), // This is the inventory item ID for existing, or a temp ID for new
   name: z.string().min(1, 'Name is required'),
   serialNumber: z.string().min(1, 'Serial is required'),
@@ -62,12 +64,12 @@ interface EditInwardOutwardDialogProps {
 export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: EditInwardOutwardDialogProps) {
   const { updateInwardOutwardRecord } = useInwardOutward();
   const catalogue = useInventory();
-    const { inventoryItems } = catalogue;
+
   const { projects } = useGeneral();
   const { toast } = useToast();
-  const [popoverOpenState, setPopoverOpenState] = useState<Record<number, boolean>>({});
 
-  const itemNames = useMemo(() => Array.from(new Set(inventoryItems.map(item => item.name))), [inventoryItems]);
+  const { state: organization } = useEquipmentOrganization();
+  const itemNames = useMemo(() => inwardChoices(catalogue, organization), [catalogue, organization]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(editSchema),
@@ -93,6 +95,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
             additionalRemarks: record.additionalRemarks || '',
             items: existingItems.map(item => ({
                 id: item.id,
+                equipment: record.equipmentDestinations?.[item.id] ? readEquipmentFields(record.equipmentDestinations[item.id], item) : undefined,
                 name: item.name,
                 serialNumber: item.serialNumber,
                 length: item.length || '',
@@ -110,7 +113,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
             }))
         });
     }
-  }, [record, isOpen, inventoryItems, form, projects]);
+  }, [record, isOpen, form, projects, catalogue]);
 
   const generateNewItemFromRecord = (record: InwardOutwardRecord) => ({
       id: `new-${Date.now()}-${Math.random()}`,
@@ -130,20 +133,31 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
       inspectionCertificateUrl: '',
   });
 
-  const onSubmit = (data: FormValues) => {
-    const sanitizedItems = data.items.map(item => {
-        const { id, ...rest } = item;
-        return {
-            ...rest,
-            id: id.startsWith('new-') ? undefined : id,
-            purchaseDate: item.purchaseDate ? item.purchaseDate.toISOString() : null,
-            inspectionDate: item.inspectionDate ? item.inspectionDate.toISOString() : null,
-            inspectionDueDate: item.inspectionDueDate ? item.inspectionDueDate.toISOString() : null,
-            tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : null,
-        };
-    });
-    updateInwardOutwardRecord({ ...record, source: data.source, date: data.date.toISOString(), remarks: data.remarks || '', additionalRemarks: data.additionalRemarks?.trim() || '' }, sanitizedItems as Partial<InventoryItem>[], data.projectId);
-    setIsOpen(false);
+  const onSubmit = async (data: FormValues) => {
+    try {
+      const sanitizedItems = data.items.map(item => {
+          const { id, equipment, ...rest } = item;
+          const isNew = id.startsWith('new-');
+          const choice = isNew ? resolveInwardChoice(item.name, itemNames) : { name: item.name, destination: record.equipmentDestinations?.[id] };
+          const destination = choice.destination;
+          if (destination) return {
+            id: id.startsWith('new-') ? undefined : id, destination,
+            name: choice.name,
+            serialNumber: item.serialNumber, ariesId: item.ariesId || '', remarks: item.remarks || '',
+            ...equipmentPayload(destination, equipment, item.serialNumber, isNew),
+          };
+          return {
+              ...rest, name: choice.name,
+              id: id.startsWith('new-') ? undefined : id,
+              purchaseDate: item.purchaseDate ? item.purchaseDate.toISOString() : null,
+              inspectionDate: item.inspectionDate ? item.inspectionDate.toISOString() : null,
+              inspectionDueDate: item.inspectionDueDate ? item.inspectionDueDate.toISOString() : null,
+              tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : null,
+          };
+      });
+      await updateInwardOutwardRecord({ ...record, source: data.source, date: data.date.toISOString(), remarks: data.remarks || '', additionalRemarks: data.additionalRemarks?.trim() || '' }, sanitizedItems as Partial<InventoryItem>[], data.projectId);
+      setIsOpen(false);
+    } catch (error) { toast({title: "Could not save inward record", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive"}); }
   };
   
   const handleOpenChange = (open: boolean) => {
@@ -153,10 +167,6 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
     setIsOpen(open);
   };
   
-  const handleItemSelect = (index: number, itemName: string) => {
-    form.setValue(`items.${index}.name`, itemName);
-    setPopoverOpenState(prev => ({...prev, [index]: false}));
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -197,7 +207,13 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
           <div className="flex-1 overflow-hidden flex flex-col mt-4">
             <ScrollArea className="flex-1 px-4 -mx-4">
               <div className="space-y-4">
-                {fields.map((field, index) => (
+                <datalist id="edit-store-choices">{itemNames.filter(c => !c.destination).map(c => <option key={c.value} value={c.name} />)}</datalist>
+                <datalist id="edit-inward-choices">{itemNames.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</datalist>
+                {fields.map((field, index) => {
+                  const rowId = form.getValues(`items.${index}.id`);
+                  const name = form.watch(`items.${index}.name`) || "";
+                  const destination = record.equipmentDestinations?.[rowId] || (rowId?.startsWith("new-") ? previewDestination(name, itemNames) : undefined);
+                  return (
                   <div key={field.id} className="p-4 border rounded-md relative bg-muted/30">
                     <div className="flex justify-between items-center mb-2">
                       <h4 className="font-bold">Item {index + 1}</h4>
@@ -208,48 +224,19 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
                             <Label>Item Name</Label>
-                            <Controller
-                                name={`items.${index}.name`}
-                                control={form.control}
-                                render={({ field: controllerField }) => (
-                                    <Popover open={popoverOpenState[index]} onOpenChange={(open) => setPopoverOpenState(prev => ({ ...prev, [index]: open }))}>
-                                        <PopoverTrigger asChild>
-                                            <Button variant="outline" className="w-full justify-start text-left font-normal">
-                                                <span className="truncate">{controllerField.value || "Select item..."}</span>
-                                                <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50"/>
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Search items..." />
-                                                <CommandList>
-                                                    <CommandEmpty>No item found.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {itemNames.map(name => (
-                                                            <CommandItem
-                                                                key={name}
-                                                                value={name}
-                                                                onSelect={() => handleItemSelect(index, name)}
-                                                            >
-                                                                <Check className={cn("mr-2 h-4 w-4", name === controllerField.value ? "opacity-100" : "opacity-0")} />
-                                                                {name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                )}
-                            />
+                            <Input {...form.register(`items.${index}.name`)} list={rowId?.startsWith("new-") ? "edit-inward-choices" : "edit-store-choices"} readOnly={!!record.equipmentDestinations?.[rowId]} />
                             {form.formState.errors.items?.[index]?.name && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index]?.name?.message}</p>}
                         </div>
                         <div className="space-y-2">
-                            <Label>Serial Number</Label>
+                            <Label>{destination?.source === 'mobileSims' ? (destination.categoryId === 'sims' ? 'SIM number' : 'IMEI') : 'Serial Number'}</Label>
                             <Input {...form.register(`items.${index}.serialNumber`)} placeholder="Serial Number" />
                              {form.formState.errors.items?.[index]?.serialNumber && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index]?.serialNumber?.message}</p>}
                         </div>
-                        <div className="space-y-2"><Label>Length (optional)</Label><Input {...form.register(`items.${index}.length`)} placeholder="e.g. 50 m" /></div>
+                        {destination ? <>
+                          <label className="space-y-2 text-sm font-medium">Aries ID<Input {...form.register(`items.${index}.ariesId`)} /></label>
+                          <Controller control={form.control} name={`items.${index}.equipment`} render={({ field }) =>
+                            <InwardEquipmentInputs destination={destination} values={field.value || {}} onChange={field.onChange} />} />
+                        </> : <><div className="space-y-2"><Label>Length (optional)</Label><Input {...form.register(`items.${index}.length`)} placeholder="e.g. 50 m" /></div>
                         <div className="space-y-2">
                             <Label>Aries ID</Label>
                             <Input {...form.register(`items.${index}.ariesId`)} placeholder="Aries ID" />
@@ -290,13 +277,14 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
                             <Label>Inspection Certificate URL</Label>
                             <Input {...form.register(`items.${index}.inspectionCertificateUrl`)} placeholder="https://..." />
                         </div>
+                        </>}
                         <div className="space-y-2 md:col-span-4">
                             <Label>Item Remarks</Label>
                             <Input {...form.register(`items.${index}.remarks`)} placeholder="Optional remarks" />
                         </div>
                     </div>
                   </div>
-                ))}
+                );})}
               </div>
             </ScrollArea>
           </div>

@@ -11,7 +11,9 @@ export default function UnifiedEquipmentTable({rows, categoryName, offset=0}: {r
   const {projects} = useGeneral();
   const [detailKey,setDetailKey] = useState<string|null>(null);
   const detail=rows.find(row=>row.key===detailKey);
-  const name=(item:any)=>item.equipmentName||item.machineName||item.name||item.model||categoryName;
+  const name=(item:any)=>item.equipmentName || item.machineName ||
+    [...new Set([item.make, item.model].filter(value => value && value !== categoryName))].join(' ') ||
+    item.simProvider || item.name || categoryName;
   return <>
     <div className={styles.tableGroup}><table className={styles.unifiedTable} aria-label={categoryName+' equipment'}><thead><tr>{['Sl. No.','Equipment','Serial Number','Aries ID','Project / Location','Status','Remarks','Actions'].map(label=><th key={label}>{label}</th>)}</tr></thead><tbody>
       {rows.map(({key,item},index)=><tr key={key}><td>{offset+index+1}</td><td>{name(item)}</td><td>{item.serialNumber||item.serialNo||item.imei||item.simNumber||'—'}</td><td>{item.ariesId||'—'}</td><td>{projects.find(project=>project.id===item.projectId)?.name||item.location||'—'}</td><td><span className={styles.equipmentStatus} data-status={item.status}>{equipmentStatusLabel(item.status)}</span></td><td>{item.remarks||'—'}</td><td><Button variant="outline" size="sm" onClick={()=>setDetailKey(key)}>Details &amp; actions</Button></td></tr>)}

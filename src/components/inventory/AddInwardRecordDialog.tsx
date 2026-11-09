@@ -1,10 +1,12 @@
 'use client';
 import { Textarea } from '@/components/ui/textarea';
+import InwardEquipmentInputs from './InwardEquipmentInputs';
+import { equipmentPayload } from './inward-equipment-fields';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useInwardOutward } from '@/contexts/inward-outward-provider';
-import { inwardChoices, resolveInwardChoice } from './inward-item-names';
+import { previewDestination, inwardChoices, resolveInwardChoice } from './inward-item-names';
 import { useEquipmentOrganization } from '../equipment/use-equipment-organization';
 import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
@@ -24,6 +26,7 @@ import { useGeneral } from '@/contexts/general-provider';
 import { cn } from '@/lib/utils';
 
 const newItemSchema = z.object({
+  equipment: z.record(z.string()).optional(),
   id: z.string(),
   name: z.string().min(1, 'Name is required'),
   serialNumber: z.string().min(1, 'Serial is required'),
@@ -106,8 +109,12 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
     if (busyRef.current) return;
     busyRef.current = true; setBusy(true);
     try {
-      const itemsToCreate = data.items.map(item => ({
-        ...resolveInwardChoice(item.name, itemNames),
+      const itemsToCreate = data.items.map(item => {
+        const choice = resolveInwardChoice(item.name, itemNames);
+        if (choice.destination) return { ...choice, serialNumber: item.serialNumber, ariesId: item.ariesId, remarks: item.remarks,
+          ...equipmentPayload(choice.destination, item.equipment, item.serialNumber, true) };
+        return {
+        ...choice,
         serialNumber: item.serialNumber,
         length: item.length || '',
         ariesId: item.ariesId,
@@ -121,7 +128,8 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
         tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : null,
         certificateUrl: item.certificateUrl || null,
         inspectionCertificateUrl: item.inspectionCertificateUrl || null,
-      }));
+        };
+      });
       const count = await batchCreateAndLogItems(itemsToCreate, data.source, data.projectId, data.additionalRemarks);
       if (!count) throw Error('No items were saved.');
       toast({ title: 'Batch Inward Successful', description: count + ' new items were created and logged.' });
@@ -219,7 +227,9 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
                 <datalist id="batch-inward-item-names">
                   {itemNames.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
                 </datalist>
-                {fields.map((field, index) => (
+                {fields.map((field, index) => {
+                  const destination = previewDestination(form.watch(`items.${index}.name`) || "", itemNames);
+                  return (
                   <div key={field.id} className="p-4 border rounded-md relative bg-muted/30">
                     <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => remove(index)}>
                         <Trash2 className="h-4 w-4 text-destructive"/>
@@ -231,11 +241,15 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
                             {form.formState.errors.items?.[index]?.name && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index]?.name?.message}</p>}
                         </div>
                         <div className="space-y-2">
-                            <Label>Serial Number</Label>
+                            <Label>{destination?.source === 'mobileSims' ? (destination.categoryId === 'sims' ? 'SIM number' : 'IMEI') : 'Serial Number'}</Label>
                             <Input {...form.register(`items.${index}.serialNumber`)} placeholder="Serial Number" />
                             {form.formState.errors.items?.[index]?.serialNumber && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index]?.serialNumber?.message}</p>}
                         </div>
-                        <div className="space-y-2"><Label>Length (optional)</Label><Input {...form.register(`items.${index}.length`)} placeholder="e.g. 50 m" /></div>
+                        {destination ? <>
+                          <label className="space-y-2 text-sm font-medium">Aries ID<Input {...form.register(`items.${index}.ariesId`)} /></label>
+                          <Controller control={form.control} name={`items.${index}.equipment`} render={({ field }) =>
+                            <InwardEquipmentInputs destination={destination} values={field.value || {}} onChange={field.onChange} />} />
+                        </> : <><div className="space-y-2"><Label>Length (optional)</Label><Input {...form.register(`items.${index}.length`)} placeholder="e.g. 50 m" /></div>
                         <div className="space-y-2">
                             <Label>Aries ID</Label>
                             <Input {...form.register(`items.${index}.ariesId`)} placeholder="Aries ID" />
@@ -276,13 +290,14 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
                             <Label>Inspection Certificate URL</Label>
                             <Input {...form.register(`items.${index}.inspectionCertificateUrl`)} placeholder="https://..." />
                         </div>
+                        </>}
                         <div className="space-y-2 md:col-span-4">
                             <Label>Remarks</Label>
                             <Input {...form.register(`items.${index}.remarks`)} placeholder="Optional remarks" />
                         </div>
                     </div>
                   </div>
-                ))}
+                );})}
               </div>
             </ScrollArea>
           </div>

@@ -37,7 +37,7 @@ export function inwardChoices(inventory: Catalogue, organization: EquipmentOrgan
       const assigned = organization.assignments?.[source + ':' + item.id];
       const category = categories.find(c => c.id === assigned) || equipmentCategories.find(c =>
         c.source === source && (source !== 'mobileSims' || c.id === (item.type === 'SIM' ? 'sims' : 'mobiles')));
-      if (category) addEquipment(item.equipmentName || item.machineName || item.name || item.model || item.make, category);
+      if (category) addEquipment(item.equipmentName || item.machineName || item.model || item.make || item.name, category);
     }
   }
   return [...groups.values()].flatMap(group => [...group.values()].map(choice => ({
@@ -58,25 +58,15 @@ export function resolveInwardChoice(input: string, choices: ReturnType<typeof in
   return { name, destination: undefined };
 }
 
-export function equipmentFields(destination: InwardDestination, name: string, serial: string) {
-  switch (destination.source) {
-    case 'utMachines':
-    case 'dftMachines': return { machineName: name };
-    case 'otherEquipments': return { equipmentName: name };
-    case 'mobileSims': return destination.categoryId === 'sims'
-      ? { type: 'SIM', simNumber: serial } : { type: 'Mobile', model: name, imei: serial };
-    case 'digitalCameras':
-    case 'weldingMachines':
-    case 'walkieTalkies':
-    case 'anemometers':
-    case 'laptopsDesktops': return { model: name };
-    default: return {};
-  }
+export function previewDestination(name: string, choices: ReturnType<typeof inwardChoices>) {
+  try { return resolveInwardChoice(name, choices).destination; }
+  catch { return undefined; }
 }
 
 export function inwardLinkedItem(record: InwardOutwardRecord, id: string, catalogue: Catalogue) {
   const dest = record.equipmentDestinations?.[id];
   const source = dest && equipmentCategories.find(c => c.source === dest.source)?.source;
   const item = catalogue[source || 'inventoryItems'].find(i => i.id === id);
-  return item as (Partial<InventoryItem> & { id: string; name: string; serialNumber: string }) | undefined;
+  const linked = item && source ? { ...item, name: item.name || item.equipmentName || item.machineName || item.model || equipmentCategories.find(category => category.source === source)?.name, serialNumber: item.serialNumber || Reflect.get(item, 'imei') || Reflect.get(item, 'simNumber') || '' } : item;
+  return linked as (Partial<InventoryItem> & { id: string; name: string; serialNumber: string }) | undefined;
 }
