@@ -14,6 +14,7 @@ import { Input } from '../ui/input';
 import { cn } from '@/lib/utils';
 import { useInwardOutward } from '@/contexts/inward-outward-provider';
 import { useAuth } from '@/contexts/auth-provider';
+import { inwardLinkedItem } from './inward-item-names';
 import { useInventory } from '@/contexts/inventory-provider';
 import { ScrollArea } from '../ui/scroll-area';
 
@@ -35,7 +36,8 @@ const formatItemNames = (itemNameString?: string): string => {
 
 export default function InwardOutwardHistory({ records }: { records: InwardOutwardRecord[] }) {
     const { user, users, can } = useAuth();
-    const { inventoryItems } = useInventory();
+    const catalogue = useInventory();
+    const { inventoryItems } = catalogue;
     const { deleteInwardOutwardRecord, lockInwardOutwardRecord, unlockInwardOutwardRecord } = useInwardOutward();
     const [editingRecord, setEditingRecord] = useState<InwardOutwardRecord | null>(null);
     const [finalizingRecord, setFinalizingRecord] = useState<InwardOutwardRecord | null>(null);
@@ -78,12 +80,12 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
             // Check current items for inward items
             const itemIds = record.finalizedItemIds || (record.itemId ? [record.itemId] : []);
             return itemIds.some(id => {
-                const item = inventoryItems.find(i => i.id === id);
+                const item = inwardLinkedItem(record, id, catalogue);
                 return String(item?.serialNumber || '').toLowerCase().includes(lowercasedTerm) || 
                        String(item?.ariesId || '').toLowerCase().includes(lowercasedTerm);
             });
         });
-    }, [records, searchTerm, inventoryItems]);
+    }, [records, searchTerm, inventoryItems, catalogue]);
 
 
     if (records.length === 0) {
@@ -228,7 +230,7 @@ export default function InwardOutwardHistory({ records }: { records: InwardOutwa
                                                         ))
                                                     ) : (
                                                         (record.finalizedItemIds || (record.itemId ? [record.itemId] : [])).map((id, idx) => {
-                                                            const item = inventoryItems.find(i => i.id === id);
+                                                            const item = inwardLinkedItem(record, id, catalogue);
                                                             return (
                                                                 <div key={idx} className="p-2 rounded bg-muted/40 border border-muted text-[10px] space-y-0.5">
                                                                     <p className="font-black text-slate-700 uppercase">{item?.name || 'Deleted Item'}</p>

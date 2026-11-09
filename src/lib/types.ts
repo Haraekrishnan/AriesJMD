@@ -1379,6 +1379,7 @@ export type InwardOutwardRecord = {
     quotationId?: string;
     vendorId?: string;
     finalizedItemIds?: string[];
+    equipmentDestinations?: Record<string, import('../components/inventory/inward-item-names').InwardDestination>;
     isLocked?: boolean;
     movedItemsDetails?: {
         length?: string;

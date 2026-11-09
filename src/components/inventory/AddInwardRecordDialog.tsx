@@ -4,7 +4,7 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useInwardOutward } from '@/contexts/inward-outward-provider';
-import { inwardItemNames } from './inward-item-names';
+import { inwardChoices, resolveInwardChoice } from './inward-item-names';
 import { useEquipmentOrganization } from '../equipment/use-equipment-organization';
 import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
@@ -86,7 +86,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
   const [importMessage, setImportMessage] = useState('');
   const [importError, setImportError] = useState('');
 
-  const itemNames = useMemo(() => isOpen ? inwardItemNames(inventory, organization) : [], [isOpen, inventory, organization]);
+  const itemNames = useMemo(() => isOpen ? inwardChoices(inventory, organization) : [], [isOpen, inventory, organization]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(batchInwardSchema),
@@ -105,8 +105,9 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
   const onSubmit = async (data: FormValues) => {
     if (busyRef.current) return;
     busyRef.current = true; setBusy(true);
-    const itemsToCreate = data.items.map(item => ({
-        name: item.name,
+    try {
+      const itemsToCreate = data.items.map(item => ({
+        ...resolveInwardChoice(item.name, itemNames),
         serialNumber: item.serialNumber,
         length: item.length || '',
         ariesId: item.ariesId,
@@ -120,13 +121,12 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
         tpInspectionDueDate: item.tpInspectionDueDate ? item.tpInspectionDueDate.toISOString() : null,
         certificateUrl: item.certificateUrl || null,
         inspectionCertificateUrl: item.inspectionCertificateUrl || null,
-    }));
-    try {
+      }));
       const count = await batchCreateAndLogItems(itemsToCreate, data.source, data.projectId, data.additionalRemarks);
       if (!count) throw Error('No items were saved.');
       toast({ title: 'Batch Inward Successful', description: count + ' new items were created and logged.' });
       form.reset(); setImportMessage(''); setImportError(''); setIsOpen(false);
-    } catch { toast({ title: 'Could not save items', description: 'Your draft is still here. Please try again.', variant: 'destructive' }); }
+    } catch (error) { toast({ title: 'Could not save items', description: error instanceof Error ? error.message : 'Your draft is still here. Please try again.', variant: 'destructive' }); }
     finally { busyRef.current = false; setBusy(false); }
   };
 
@@ -217,7 +217,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
             <ScrollArea className="flex-1 px-4">
               <div className="space-y-4">
                 <datalist id="batch-inward-item-names">
-                  {itemNames.map(n => <option key={n} value={n} />)}
+                  {itemNames.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
                 </datalist>
                 {fields.map((field, index) => (
                   <div key={field.id} className="p-4 border rounded-md relative bg-muted/30">

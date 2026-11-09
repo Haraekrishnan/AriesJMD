@@ -1,4 +1,6 @@
 'use client';
+import { equipmentFields, type InwardDestination } from '@/components/inventory/inward-item-names';
+import { equipmentCategories } from '@/components/requests/transfer-item-label';
 import { inwardRecordItemIds } from '@/components/inventory/inward-record-items';
 
 import React, { createContext, useContext, ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
@@ -10,10 +12,12 @@ import { useToast } from '@/hooks/use-toast';
 import type { InwardOutwardRecord, InventoryItem, User } from '@/lib/types';
 import { useInventory } from './inventory-provider';
 
+type BatchItem = { name: string; serialNumber: string; destination?: InwardDestination; [field: string]: unknown };
+
 type InwardOutwardContextType = {
   inwardOutwardRecords: InwardOutwardRecord[];
   pendingFinalizationCount: number;
-  batchCreateAndLogItems: (items: Omit<InventoryItem, 'id' | 'lastUpdated'>[], source: string, projectId: string, additionalRemarks?: string) => Promise<number>;
+  batchCreateAndLogItems: (items: BatchItem[], source: string, projectId: string, additionalRemarks?: string) => Promise<number>;
   finalizeInwardPurchase: (recordId: string, itemsData: Omit<InventoryItem, 'id' | 'lastUpdated' | 'status' | 'isArchived'>[], additionalRemarks?: string) => Promise<void>;
   updateInwardOutwardRecord: (record: InwardOutwardRecord, itemsData: Partial<InventoryItem>[], projectId: string) => Promise<void>;
   deleteInwardOutwardRecord: (recordId: string) => Promise<void>;
@@ -60,40 +64,47 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
     return inwardOutwardRecords.filter(r => r.status === 'Pending Details' && inwardRecordItemIds(r, inventoryItems).length === 0).length;
   }, [inwardOutwardRecords, can.manage_inward_outward, inventoryItems]);
 
-  const batchCreateAndLogItems = useCallback(async (itemsToCreate: Omit<InventoryItem, 'id' | 'lastUpdated'>[], source: string, projectId: string, additionalRemarks?: string) => {
+  const batchCreateAndLogItems = useCallback(async (itemsToCreate: BatchItem[], source: string, projectId: string, additionalRemarks?: string) => {
     if (!user) return 0;
     
     const updates: { [key: string]: any } = {};
     const now = new Date().toISOString();
     let totalQuantity = 0;
-    const itemSummary: Record<string, number> = {};
+    const equipmentDestinations: Record<string, InwardDestination> = {};
     const createdItemIds: string[] = [];
 
-    itemsToCreate.forEach(itemData => {
-      const newRef = push(ref(rtdb, 'inventoryItems'));
+    itemsToCreate.forEach(({ destination, name, serialNumber, ...fields }) => {
+      const collection = destination?.source || 'inventoryItems';
+      const newRef = push(ref(rtdb, collection));
       const newId = newRef.key!;
 
       const sanitizedItemData: { [key: string]: any } = {};
-      for (const key in itemData) {
-          const value = (itemData as any)[key];
+      for (const [key, value] of Object.entries(fields)) {
           sanitizedItemData[key] = value === undefined ? null : value;
       }
 
-      updates[`/inventoryItems/${newId}`] = {
-        ...sanitizedItemData,
+      updates[`/${collection}/${newId}`] = {
+        ...sanitizedItemData, name, serialNumber,
+        ...(destination && equipmentFields(destination, name, serialNumber)),
         isArchived: false,
         lastUpdated: now,
-        status: 'In Store',
+        status: destination ? (collection === 'mobileSims' ? 'Standby' : 'Idle') : 'In Store',
         projectId: projectId,
       };
       createdItemIds.push(newId);
       totalQuantity += 1;
-      itemSummary[itemData.name] = (itemSummary[itemData.name] || 0) + 1;
+      if (destination) {
+        equipmentDestinations[newId] = destination;
+        if (!equipmentCategories.some(c => c.id === destination.categoryId)) {
+          updates[`equipmentOrganization/assignments/${collection}:${newId}`] = destination.categoryId;
+        }
+      }
     });
 
     if (totalQuantity > 0) {
       const newRecordRef = push(ref(rtdb, 'inwardOutwardRecords'));
-      const record: Omit<InwardOutwardRecord, 'id'> = {
+      const record = {
+        equipmentDestinations,
         type: 'Inward',
         quantity: totalQuantity,
         date: now,
@@ -184,6 +195,15 @@ export function InwardOutwardProvider({ children }: { children: ReactNode }) {
         if (id && !id.startsWith('new-')) {
             const itemId = id;
             finalizedItemIds.push(itemId);
+            const destination = originalRecord.equipmentDestinations?.[itemId];
+            if (destination) {
+                const changes = { ...sanitizedPayload, projectId, lastUpdated: now,
+                    ...equipmentFields(destination, sanitizedPayload.name, sanitizedPayload.serialNumber) };
+                for (const [key, value] of Object.entries(changes)) {
+                    updates[`${destination.source}/${itemId}/${key}`] = value;
+                }
+                continue;
+            }
             const itemPath = `inventoryItems/${itemId}`;
             const existingItemData = inventoryItems.find(i => i.id === itemId) || {};
             updates[itemPath] = {

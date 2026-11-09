@@ -15,6 +15,7 @@ import { parseISO, isValid } from 'date-fns';
 import { ScrollArea } from '../ui/scroll-area';
 import { PlusCircle, Trash2, ChevronsUpDown, Check } from 'lucide-react';
 import { useInwardOutward } from '@/contexts/inward-outward-provider';
+import { inwardLinkedItem } from './inward-item-names';
 import { useInventory } from '@/contexts/inventory-provider';
 import { useGeneral } from '@/contexts/general-provider';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -60,7 +61,8 @@ interface EditInwardOutwardDialogProps {
 
 export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: EditInwardOutwardDialogProps) {
   const { updateInwardOutwardRecord } = useInwardOutward();
-  const { inventoryItems } = useInventory();
+  const catalogue = useInventory();
+    const { inventoryItems } = catalogue;
   const { projects } = useGeneral();
   const { toast } = useToast();
   const [popoverOpenState, setPopoverOpenState] = useState<Record<number, boolean>>({});
@@ -79,7 +81,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
   useEffect(() => {
     if (record && isOpen) {
         const itemIds = record.finalizedItemIds || (record.itemId ? [record.itemId] : []);
-        const existingItems = itemIds.map(id => inventoryItems.find(i => i.id === id)).filter(Boolean) as InventoryItem[];
+        const existingItems = itemIds.map(id => inwardLinkedItem(record, id, catalogue)).filter(Boolean) as InventoryItem[];
         
         const initialProjectId = existingItems.length > 0 ? existingItems[0].projectId : projects.find(p => p.name === 'Store')?.id || '';
 
