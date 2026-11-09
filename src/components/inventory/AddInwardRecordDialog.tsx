@@ -225,7 +225,9 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
             <ScrollArea className="flex-1 px-4">
               <div className="space-y-4">
                 <datalist id="batch-inward-item-names">
-                  {itemNames.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
+                  {itemNames.filter(choice => choice.suggest).map(choice => (
+                    <option key={choice.value} value={choice.value}>{choice.destination ? 'Equipment' : choice.label}</option>
+                  ))}
                 </datalist>
                 {fields.map((field, index) => {
                   const destination = previewDestination(form.watch(`items.${index}.name`) || "", itemNames);

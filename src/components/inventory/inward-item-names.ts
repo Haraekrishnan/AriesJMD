@@ -9,16 +9,17 @@ type NamedItem = {
   model?: string; make?: string; type?: string; serialNumber?: string;
 };
 type Catalogue = Record<Source | 'inventoryItems', readonly NamedItem[]>;
-type Choice = { name: string; label: string; destination?: InwardDestination };
+type Choice = { name: string; label: string; suggest: boolean; destination?: InwardDestination };
 
 export function inwardChoices(inventory: Catalogue, organization: EquipmentOrganization) {
   const groups = new Map<string, Map<string, Choice>>();
-  function add(value: string | undefined, label: string, destination?: InwardDestination) {
+  function add(value: string | undefined, label: string, destination?: InwardDestination, suggest = true) {
     const name = value?.trim();
     if (!name) return;
     const key = name.toLowerCase();
     const group = groups.get(key) || new Map<string, Choice>();
-    group.set(destination?.categoryId || 'store', { name, label, destination });
+    const id = destination?.categoryId || 'store';
+    if (!group.has(id)) group.set(id, { name, label, destination, suggest });
     groups.set(key, group);
   }
   const categories = [
@@ -27,8 +28,8 @@ export function inwardChoices(inventory: Catalogue, organization: EquipmentOrgan
       id, name: category.name, source: 'otherEquipments' as const,
     })),
   ];
-  function addEquipment(name: string | undefined, category: typeof categories[number]) {
-    add(name, 'Equipment / ' + category.name, { categoryId: category.id, source: category.source });
+  function addEquipment(name: string | undefined, category: typeof categories[number], suggest = true) {
+    add(name, 'Equipment / ' + category.name, { categoryId: category.id, source: category.source }, suggest);
   }
   inventory.inventoryItems.forEach(item => add(item.name, 'Store Inventory'));
   categories.forEach(category => addEquipment(category.name, category));
@@ -37,18 +38,19 @@ export function inwardChoices(inventory: Catalogue, organization: EquipmentOrgan
       const assigned = organization.assignments?.[source + ':' + item.id];
       const category = categories.find(c => c.id === assigned) || equipmentCategories.find(c =>
         c.source === source && (source !== 'mobileSims' || c.id === (item.type === 'SIM' ? 'sims' : 'mobiles')));
-      if (category) addEquipment(item.equipmentName || item.machineName || item.model || item.make || item.name, category);
+      if (category) addEquipment(item.equipmentName || item.machineName || item.model || item.make || item.name, category, false);
     }
   }
   return [...groups.values()].flatMap(group => [...group.values()].map(choice => ({
-    ...choice, value: group.size === 1 && !choice.destination ? choice.name : choice.name + ' — ' + choice.label,
+    ...choice, value: group.size === 1 ? choice.name : choice.name + ' — ' + choice.label,
   }))).sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
 }
 
 export function resolveInwardChoice(input: string, choices: ReturnType<typeof inwardChoices>) {
   const name = input.trim();
   const key = name.toLowerCase();
-  const match = choices.find(choice => choice.value.toLowerCase() === key);
+  const match = choices.find(choice => choice.value.toLowerCase() === key ||
+    (choice.destination && (choice.name + ' — ' + choice.label).toLowerCase() === key));
   if (match) return { name: match.name, destination: match.destination };
   const matches = choices.filter(choice => choice.name.toLowerCase() === key);
   if (matches.length === 1) return { name: matches[0].name, destination: matches[0].destination };

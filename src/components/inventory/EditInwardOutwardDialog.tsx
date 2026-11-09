@@ -208,7 +208,7 @@ export default function EditInwardOutwardDialog({ isOpen, setIsOpen, record }: E
             <ScrollArea className="flex-1 px-4 -mx-4">
               <div className="space-y-4">
                 <datalist id="edit-store-choices">{itemNames.filter(c => !c.destination).map(c => <option key={c.value} value={c.name} />)}</datalist>
-                <datalist id="edit-inward-choices">{itemNames.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}</datalist>
+                <datalist id="edit-inward-choices">{itemNames.filter(c => c.suggest).map(c => <option key={c.value} value={c.value}>{c.destination ? 'Equipment' : c.label}</option>)}</datalist>
                 {fields.map((field, index) => {
                   const rowId = form.getValues(`items.${index}.id`);
                   const name = form.watch(`items.${index}.name`) || "";
