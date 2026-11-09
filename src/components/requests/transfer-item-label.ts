@@ -1,6 +1,6 @@
 import { transferItemCollections } from './transfer-item-types';
 import type { EquipmentOrganization } from '@/components/equipment/equipment-categories';
-const categories = [
+export const equipmentCategories = [
   {
     "id": "ut-machines",
     "source": "utMachines",
@@ -86,7 +86,7 @@ const categories = [
     "source": "otherEquipments",
     "name": "General Equipments"
   }
-];
+ ] as const;
 type LabelItem = {
   id: string;
   itemType: string;
@@ -103,9 +103,9 @@ export function transferItemLabel(item: LabelItem, organization: EquipmentOrgani
   const source = transferItemCollections[item.itemType as keyof typeof transferItemCollections];
   const assigned = organization.assignments?.[source + ':' + item.id];
   const assignedName = assigned
-    ? organization.categories?.[assigned]?.name || categories.find(c => c.id === assigned)?.name
+    ? organization.categories?.[assigned]?.name || equipmentCategories.find(c => c.id === assigned)?.name
     : undefined;
-  const nativeName = categories.find(c => c.source === source &&
+  const nativeName = equipmentCategories.find(c => c.source === source &&
     (source !== 'mobileSims' || c.id === (item.type === 'SIM' ? 'sims' : 'mobiles')))?.name;
   const category = assignedName || nativeName;
   const details = item.name?.trim() || item.machineName?.trim() || item.equipmentName?.trim() ||

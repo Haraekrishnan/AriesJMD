@@ -4,6 +4,8 @@ import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useInwardOutward } from '@/contexts/inward-outward-provider';
+import { inwardItemNames } from './inward-item-names';
+import { useEquipmentOrganization } from '../equipment/use-equipment-organization';
 import { useInventory } from '@/contexts/inventory-provider';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -73,7 +75,9 @@ const generateDefaultItem = () => ({
 
 export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRecordDialogProps) {
   const { batchCreateAndLogItems } = useInwardOutward();
-  const { inventoryItems } = useInventory();
+  const inventory = useInventory();
+  const { inventoryItems } = inventory;
+  const { state: organization } = useEquipmentOrganization();
   const { projects } = useGeneral();
   const { toast } = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -82,7 +86,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
   const [importMessage, setImportMessage] = useState('');
   const [importError, setImportError] = useState('');
 
-  const itemNames = useMemo(() => Array.from(new Set(inventoryItems.map(item => item.name))), [inventoryItems]);
+  const itemNames = useMemo(() => isOpen ? inwardItemNames(inventory, organization) : [], [isOpen, inventory, organization]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(batchInwardSchema),
@@ -212,7 +216,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
           <div className="space-y-2 px-1 py-2 shrink-0"><Label>Additional remarks (optional)</Label><Textarea {...form.register('additionalRemarks')} rows={2} placeholder="Additional details or items without serial numbers…" /><p className="text-xs text-muted-foreground">Notes only; these details do not change the item quantities.</p></div><div className="flex-1 min-h-0 overflow-hidden flex flex-col mt-4">
             <ScrollArea className="flex-1 px-4">
               <div className="space-y-4">
-                <datalist id="item-names-list">
+                <datalist id="batch-inward-item-names">
                   {itemNames.map(n => <option key={n} value={n} />)}
                 </datalist>
                 {fields.map((field, index) => (
@@ -223,7 +227,7 @@ export default function AddInwardRecordDialog({ isOpen, setIsOpen }: AddInwardRe
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
                             <Label>Item Name</Label>
-                            <Input {...form.register(`items.${index}.name`)} placeholder="e.g., Harness" list="item-names-list" />
+                            <Input {...form.register(`items.${index}.name`)} placeholder="e.g., Harness" list="batch-inward-item-names" />
                             {form.formState.errors.items?.[index]?.name && <p className="text-xs text-destructive mt-1">{form.formState.errors.items[index]?.name?.message}</p>}
                         </div>
                         <div className="space-y-2">
