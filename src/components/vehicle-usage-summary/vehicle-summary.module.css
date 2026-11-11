@@ -20,12 +20,14 @@
 .filters select { min-width:150px; height:40px; border:1px solid #dce5f1; border-radius:6px; background:white; padding:0 10px; font-size:14px; }
 .table { width:100%; table-layout:fixed; border-collapse:collapse; font-size:14px; }
 .table th { padding:12px 10px; text-align:left; background:#eff4fb; color:#334155; font-size:12px; font-weight:600; }
-.table th:first-child { width:17%; }
-.table th:nth-child(2) { width:13%; }
-.table th:nth-child(3), .table th:nth-child(4) { width:9%; }
-.table th:nth-child(5) { width:19%; }
-.table th:nth-child(6) { width:18%; }
-.table th:last-child { width:15%; }
+.table th:first-child { width:16%; }
+.table th:nth-child(2) { width:12%; }
+.table th:nth-child(3) { width:8%; }
+.table th:nth-child(4) { width:12%; }
+.table th:nth-child(5) { width:8%; }
+.table th:nth-child(6) { width:16%; }
+.table th:nth-child(7) { width:15%; }
+.table th:last-child { width:13%; }
 .table td { padding:16px 10px; border-bottom:1px solid #e5edf7; vertical-align:middle; overflow-wrap:anywhere; }
 .vehicleRow:hover { background:#f8fbff; }
 .identity strong { font-weight:600; }
@@ -51,6 +53,7 @@
  .statusCell { grid-column:2; text-align:right; }
  .metric::before, .audit::before { content:attr(data-label); display:block; font-size:12px; font-weight:400; color:#64748b; margin-bottom:5px; }
  .metric { font-weight:600; font-size:16px; }
+ .overtimeCell { grid-column:1/-1; }
  .actionsCell { grid-column:1/-1; border-bottom:0 !important; }
  .actions { justify-content:flex-start; flex-wrap:wrap; gap:8px; }
  .actions > :last-child { margin-left:auto; }

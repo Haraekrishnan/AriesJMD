@@ -18,6 +18,7 @@ export function visibleMonthVehicles(vehicles: Vehicle[], records?: Record<strin
 
 export function usageTotals(record: UsageEntry | undefined, month: Date) {
   let km = 0, minutes = 0, hasDistance = false, hasOvertime = false;
+  let kmEnteredThrough: Date | undefined;
   const dayCount = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
   for (let day = 1; day <= dayCount; day++) {
     const entry = record?.days?.[day];
@@ -26,6 +27,10 @@ export function usageTotals(record: UsageEntry | undefined, month: Date) {
     if (Number.isFinite(start) && Number.isFinite(end)) {
       if (start || end) hasDistance = true;
       if (end > start) km += end - start;
+      // Opening readings may be carried forward automatically to the following day.
+      if (end > 0 && start >= 0 && end >= start) {
+        kmEnteredThrough = new Date(month.getFullYear(), month.getMonth(), day);
+      }
     }
     const raw = String(entry.overtime ?? '').trim();
     if (raw) {
@@ -35,5 +40,5 @@ export function usageTotals(record: UsageEntry | undefined, month: Date) {
     }
   }
   minutes = Math.round(minutes);
-  return { km, hasDistance, hasOvertime, overtime: Math.floor(minutes / 60) + ':' + String(minutes % 60).padStart(2, '0') };
+  return { km, kmEnteredThrough, hasDistance, hasOvertime, overtime: Math.floor(minutes / 60) + ':' + String(minutes % 60).padStart(2, '0') };
 }

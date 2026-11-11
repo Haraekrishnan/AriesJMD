@@ -69,7 +69,8 @@ export function VehicleDataRow({ vehicle, currentMonth, vehicleRecord }: { vehic
         <td className={styles.identity}><strong>{vehicle.vehicleNumber}</strong><small>{vehicleRecord?.vehicleType || 'Vehicle'}</small></td>
         <td className={styles.statusCell}><span className={styles.status + ' ' + styles[status.key]}><i />{status.label}</span></td>
         <td className={styles.metric} data-label="Total km">{totals.hasDistance ? totals.km.toLocaleString('en-IN', { maximumFractionDigits: 2 }) : '—'}</td>
-        <td className={styles.metric} data-label="Overtime (h:mm)">{totals.hasOvertime ? totals.overtime : '—'}</td>
+        <td className={styles.metric} data-label="KM entered through">{totals.kmEnteredThrough ? format(totals.kmEnteredThrough, 'dd MMM yyyy') : '—'}</td>
+        <td className={styles.metric + ' ' + styles.overtimeCell} data-label="Overtime (h:mm)">{totals.hasOvertime ? totals.overtime : '—'}</td>
         <td className={styles.audit} data-label="Updated by">
           <span>{lastUpdatedBy?.name || (vehicleRecord?.lastUpdated ? 'Unknown user' : 'No updates')}</span>
           <small>{dateLabel(vehicleRecord?.lastUpdated, 'dd MMM yyyy, h:mm a')}</small>
@@ -152,7 +153,7 @@ export default function VehicleUsageSheet() {
           <Button variant="outline" onClick={clear}>Clear</Button>
         </div>
         <table className={styles.table}>
-          <thead><tr><th>Vehicle</th><th>Usage status</th><th>Total km</th><th>Overtime<br /><small>h:mm</small></th><th>Updated by</th><th>Verified by</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Vehicle</th><th>Usage status</th><th>Total km</th><th title="Latest date with a valid closing kilometre reading in this month">KM entered through</th><th>Overtime<br /><small>h:mm</small></th><th>Updated by</th><th>Verified by</th><th>Actions</th></tr></thead>
           <tbody>{pageVehicles.map(vehicle => <VehicleDataRow key={vehicle.id + format(currentMonth, 'yyyy-MM')} vehicle={vehicle} currentMonth={currentMonth} vehicleRecord={monthRecords?.[vehicle.id]} />)}</tbody>
         </table>
         {!filtered.length && <div className={styles.empty}><p>{monthVehicles.length ? 'No vehicles match your search or status filter.' : 'No vehicles available for this month.'}</p>{monthVehicles.length > 0 && <Button variant="outline" onClick={clear}>Clear filters</Button>}</div>}
