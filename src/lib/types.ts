@@ -967,7 +967,9 @@ export type UnlockRequest = {
     userId: string;
     userName: string;
     date: string; // ISO
-    status: 'pending' | 'resolved';
+    status: 'pending' | 'resolved' | 'cancelled';
+    handledBy?: string;
+    handledAt?: string;
 };
 
 export type FeedbackStatus = 'New' | 'In Progress' | 'Resolved';

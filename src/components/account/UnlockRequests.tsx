@@ -8,15 +8,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { KeyRound, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { ScrollArea } from "../ui/scroll-area";
+import { useState } from "react";
 
 export default function UnlockRequests() {
-    const { unlockRequests, resolveUnlockRequest } = useAppContext();
+    const { unlockRequests, resolveUnlockRequest, cancelUnlockRequest } = useAppContext();
     const { toast } = useToast();
 
-    const handleResolve = (requestId: string, userId: string) => {
-        resolveUnlockRequest(requestId, userId);
-        toast({ title: "Request Resolved & User Unlocked" });
+    const [busy, setBusy] = useState(false);
+    const handleAction = async (requestId: string, userId?: string) => {
+        if (!userId && !window.confirm('Cancel this unlock request? The account will remain locked.')) return;
+        setBusy(true);
+        try {
+            if (userId) await resolveUnlockRequest(requestId, userId);
+            else await cancelUnlockRequest(requestId);
+            toast({ title: userId ? 'Account unlocked' : 'Unlock request cancelled' });
+        } catch (error) {
+            toast({ title: 'Unable to update request', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
+        } finally { setBusy(false); }
     };
 
     const pendingRequests = unlockRequests.filter(r => r.status === 'pending');
@@ -43,6 +51,7 @@ export default function UnlockRequests() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>User</TableHead>
+                                <TableHead>Area / Request type</TableHead>
                                 <TableHead>Requested</TableHead>
                                 <TableHead className="text-right">Action</TableHead>
                             </TableRow>
@@ -51,9 +60,11 @@ export default function UnlockRequests() {
                             {pendingRequests.map(req => (
                                 <TableRow key={req.id}>
                                     <TableCell data-label="User">{req.userName}</TableCell>
-                                    <TableCell data-label="Requested">{formatDistanceToNow(parseISO(req.date), { addSuffix: true })}</TableCell>
+                                    <TableCell data-label="Area / Request type">Account access · Login unlock</TableCell>
+                                    <TableCell data-label="Requested" title={req.date}>{formatDistanceToNow(parseISO(req.date), { addSuffix: true })}</TableCell>
                                     <TableCell data-label="Actions" className="text-right">
-                                        <Button size="sm" onClick={() => handleResolve(req.id, req.userId)}>
+                                        <Button disabled={busy} size="sm" variant="outline" className="mr-2" onClick={() => handleAction(req.id)}>Cancel request</Button>
+                                        <Button disabled={busy} size="sm" onClick={() => handleAction(req.id, req.userId)}>
                                             <ShieldCheck className="mr-2 h-4 w-4" /> Unlock
                                         </Button>
                                     </TableCell>

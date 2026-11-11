@@ -50,7 +50,7 @@ import { isSameDay, parseISO } from 'date-fns';
 
 export function AppSidebar() {
   const { 
-    user, logout, appName, appLogo, can,
+    user, logout, appName, appLogo, can, unlockRequests,
   } = useAuth();
   const { 
     tasks, pendingTaskApprovalCount, myNewTaskCount
@@ -59,7 +59,7 @@ export function AppSidebar() {
     certificateRequests, internalRequests, ppeRequests, inventoryTransferRequests, damageReports 
   } = useInventory();
   const { 
-    managementRequests, incidentReports, feedback, unlockRequests
+    managementRequests, incidentReports, feedback
   } = useGeneral();
   const { 
     plannerEvents, dailyPlannerComments, trackerNotificationCount, jobProgress
@@ -118,6 +118,7 @@ export function AppSidebar() {
       incidentReporting: incidentNotificationCount,
       vendorLedger: pendingPaymentApprovalCount,
       account: pendingFeedbackCount + pendingUnlockRequestCount,
+      unlocks: pendingUnlockRequestCount,
       manpower: 0,
       purchases: 0, // Placeholder
     };
@@ -180,13 +181,13 @@ export function AppSidebar() {
                     variant={pathname.startsWith(item.href) ? 'secondary' : 'ghost'}
                     className="portal-nav-link w-full justify-start"
                     >
-                    <Link aria-current={pathname.startsWith(item.href) ? 'page' : undefined} href={item.href === '/ehs' ? '/ehs?entry=notifications' : item.href} className="flex items-center justify-between w-full">
+                    <Link aria-current={pathname.startsWith(item.href) ? 'page' : undefined} href={item.href === '/ehs' ? '/ehs?entry=notifications' : item.href === '/account' && notificationCounts.unlocks ? '/account#unlocks' : item.href} className="flex items-center justify-between w-full">
                         <div className="flex items-center gap-3">
                         <item.icon className="h-5 w-5" />
                         <span>{item.label}</span>
                         </div>
                         {item.notificationCount > 0 && (
-                        <Badge variant="destructive" aria-label={`${item.notificationCount} pending actions in ${item.label}`} className="h-6 min-w-6 shrink-0 flex items-center justify-center px-1.5">{item.notificationCount}</Badge>
+                        <Badge variant="destructive" title={item.href === '/account' ? `${notificationCounts.unlocks || 0} account unlock requests; remaining notifications are feedback` : undefined} aria-label={`${item.notificationCount} pending actions in ${item.label}`} className="h-6 min-w-6 shrink-0 flex items-center justify-center px-1.5">{item.notificationCount}</Badge>
                         )}
                     </Link>
                     </Button>

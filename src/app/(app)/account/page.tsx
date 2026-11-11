@@ -1,6 +1,7 @@
 'use client';
 import styles from '@/components/account/account.module.css';
 import { useAuth } from '@/contexts/auth-provider';
+import { useGeneral } from '@/contexts/general-provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
@@ -28,7 +29,8 @@ import { DecorationTheme } from '@/lib/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function AccountPage() {
-  const { user, users, can, deleteUser, updateProfile, loading, getVisibleUsers, lockUser, unlockUser, appName, appLogo, updateBranding, activeTheme, updateActiveTheme } = useAuth();
+  const { feedback } = useGeneral();
+  const { user, users, unlockRequests, can, deleteUser, updateProfile, loading, getVisibleUsers, lockUser, unlockUser, appName, appLogo, updateBranding, activeTheme, updateActiveTheme } = useAuth();
   const { toast } = useToast();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
@@ -56,6 +58,12 @@ export default function AccountPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [activeSection, setActiveSection] = useState('profile');
+  useEffect(() => {
+    const followSection = () => { if (window.location.hash === '#unlocks') setActiveSection('unlocks'); };
+    followSection();
+    window.addEventListener('hashchange', followSection);
+    return () => window.removeEventListener('hashchange', followSection);
+  }, []);
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [userPage, setUserPage] = useState(1);
@@ -65,8 +73,8 @@ export default function AccountPage() {
     { id: 'users', label: 'Users', allowed: can?.manage_users },
     { id: 'roles', label: 'Roles & permissions', allowed: can?.manage_roles || user?.role === 'Admin' },
     { id: 'projects', label: 'Projects', allowed: can?.manage_projects },
-    { id: 'unlocks', label: 'Unlock requests', allowed: can?.manage_user_lock_status },
-    { id: 'feedback', label: 'Feedback', allowed: can?.manage_feedback },
+    { id: 'unlocks', label: `Unlock requests (${unlockRequests.filter(r => r.status === 'pending').length})`, allowed: can?.manage_user_lock_status },
+    { id: 'feedback', label: `Feedback (${feedback.filter(f => user && !f.viewedBy?.[user.id]).length})`, allowed: can?.manage_feedback },
     { id: 'branding', label: 'Branding', allowed: can?.manage_branding },
     { id: 'decoration', label: 'Appearance', allowed: user?.role === 'Admin' || user?.role === 'Project Coordinator' },
   ].filter(section => section.allowed);

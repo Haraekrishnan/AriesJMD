@@ -31,7 +31,7 @@ import type { DailyPlannerComment, PlannerEvent, Comment, LogbookRequest } from 
 
 const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
     const { 
-      user, logout, appName, appLogo, can,
+      user, logout, appName, appLogo, can, unlockRequests,
     } = useAuth();
     const { 
       tasks, pendingTaskApprovalCount, myNewTaskCount
@@ -40,7 +40,7 @@ const MobileSidebar = ({ onLinkClick }: { onLinkClick: () => void }) => {
       certificateRequests, internalRequests, ppeRequests, inventoryTransferRequests, damageReports
     } = useInventory();
     const {
-      managementRequests, incidentReports, feedback, unlockRequests
+      managementRequests, incidentReports, feedback
     } = useGeneral();
     const {
       plannerEvents, dailyPlannerComments, trackerNotificationCount,
@@ -147,6 +147,7 @@ const plannerNotificationCount =
       incidentReporting: incidentNotificationCount,
       vendorLedger: pendingPaymentApprovalCount,
       account: pendingFeedbackCount + pendingUnlockRequestCount,
+      unlocks: pendingUnlockRequestCount,
       manpower: 0,
       purchases: 0, // Placeholder
     };
@@ -197,7 +198,7 @@ const plannerNotificationCount =
                     className="portal-nav-link w-full justify-start"
                     onClick={onLinkClick}
                   >
-                    <Link aria-current={pathname.startsWith(item.href) ? 'page' : undefined} href={item.href} className="flex items-center justify-between w-full">
+                    <Link aria-current={pathname.startsWith(item.href) ? 'page' : undefined} href={item.href === '/account' && notificationCounts.unlocks ? '/account#unlocks' : item.href} className="flex items-center justify-between w-full">
                       <div className="flex items-center gap-3">
                         <item.icon className="h-5 w-5" />
                         <span>{item.label}</span>

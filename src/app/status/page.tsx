@@ -10,9 +10,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-provider';
 
 export default function StatusPage() {
-  const { user, loading, logout, requestUnlock } = useAuth();
+  const { user, loading, logout, requestUnlock, cancelUnlockRequest, unlockRequests } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const [requestBusy, setRequestBusy] = useState(false);
+  const myPendingRequests = unlockRequests.filter(r => r.userId === user?.id && r.status === 'pending');
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
@@ -37,14 +39,20 @@ export default function StatusPage() {
     }
   }, [user, loading, hasMounted, router]);
 
-  const handleUnlockRequest = () => {
-    if (user) {
-      requestUnlock(user.id, user.name);
-      toast({
-        title: 'Unlock Request Sent',
-        description: 'Your request has been sent to the administrator for review.',
-      });
-    }
+  const handleUnlockRequest = async () => {
+    if (!user) return;
+    setRequestBusy(true);
+    try {
+      if (myPendingRequests.length) {
+        await Promise.all(myPendingRequests.map(r => cancelUnlockRequest(r.id)));
+        toast({ title: 'Unlock request cancelled' });
+      } else {
+        await requestUnlock(user.id, user.name);
+        toast({ title: 'Unlock request sent', description: 'Your administrator can review it in Account → Unlock requests.' });
+      }
+    } catch (error) {
+      toast({ title: 'Unable to update request', description: error instanceof Error ? error.message : 'Please try again.', variant: 'destructive' });
+    } finally { setRequestBusy(false); }
   };
 
   const isInactive = user?.status === 'locked' || user?.status === 'deactivated';
@@ -84,7 +92,7 @@ export default function StatusPage() {
           </CardDescription>
         </CardHeader>
         <CardFooter className="flex flex-col gap-4">
-          {!isDeactivated && <Button onClick={handleUnlockRequest} className="w-full">Request Unlock</Button>}
+          {!isDeactivated && <Button disabled={requestBusy} onClick={handleUnlockRequest} className="w-full">{requestBusy ? "Saving..." : myPendingRequests.length ? "Cancel unlock request" : "Request Unlock"}</Button>}
           <Button variant="outline" onClick={logout} className="w-full">
             <LogOut className="mr-2 h-4 w-4" /> Log Out
           </Button>

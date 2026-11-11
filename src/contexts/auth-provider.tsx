@@ -36,8 +36,9 @@ type AuthContextType = {
   resetPassword: (email: string, code: string, newPass: string) => Promise<boolean>;
   lockUser: (userId: string) => void;
   unlockUser: (userId: string) => void;
-  requestUnlock: (userId: string, userName: string) => void;
-  resolveUnlockRequest: (requestId: string, userId: string) => void;
+  requestUnlock: (userId: string, userName: string) => Promise<void>;
+  resolveUnlockRequest: (requestId: string, userId: string) => Promise<void>;
+  cancelUnlockRequest: (requestId: string) => Promise<void>;
   addUser: (user: Omit<User, 'id' | 'avatar' | 'status'>) => void;
   updateUser: (user: User) => Promise<boolean>;
   deleteUser: (userId: string) => void;
@@ -313,16 +314,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const lockUser = useCallback((userId: string) => update(ref(rtdb, `users/${userId}`), { status: 'locked' }), []);
   const unlockUser = useCallback((userId: string) => update(ref(rtdb, `users/${userId}`), { status: 'active' }), []);
   
-  const requestUnlock = useCallback((userId: string, userName: string) => {
-    const newRequestRef = push(ref(rtdb, 'unlockRequests'));
-    set(newRequestRef, { userId, userName, date: new Date().toISOString(), status: 'pending' });
+  const requestUnlock = useCallback(async (userId: string, userName: string) => {
+    if (!user || user.id !== userId) throw new Error('You can only request access for your own account.');
+    const existing = await get(query(ref(rtdb, 'unlockRequests'), orderByChild('userId'), equalTo(userId)));
+    if (Object.values(existing.val() || {}).some((r: any) => r.status === 'pending')) return;
+    await set(push(ref(rtdb, 'unlockRequests')), { userId, userName, date: new Date().toISOString(), status: 'pending' });
+  }, [user]);
 
-  }, []);
-  
-  const resolveUnlockRequest = useCallback((requestId: string, userId: string) => {
-    unlockUser(userId);
-    update(ref(rtdb, `unlockRequests/${requestId}`), { status: 'resolved' });
-  }, [unlockUser]);
+  const resolveUnlockRequest = useCallback(async (requestId: string, userId: string) => {
+    if (!user || !(user.role === 'Admin' || can.manage_user_lock_status)) throw new Error('Permission denied.');
+    const snapshot = await get(ref(rtdb, 'unlockRequests/' + requestId));
+    if (!snapshot.exists() || snapshot.val().status !== 'pending' || snapshot.val().userId !== userId) throw new Error('This request is no longer pending.');
+    const pending = await get(query(ref(rtdb, 'unlockRequests'), orderByChild('userId'), equalTo(userId)));
+    const changes: Record<string, unknown> = { ['users/' + userId + '/status']: 'active' };
+    Object.entries(pending.val() || {}).forEach(([id, value]: [string, any]) => {
+      if (value.status === 'pending') {
+        changes['unlockRequests/' + id + '/status'] = 'resolved';
+        changes['unlockRequests/' + id + '/handledBy'] = user.id;
+        changes['unlockRequests/' + id + '/handledAt'] = new Date().toISOString();
+      }
+    });
+    await update(ref(rtdb), changes);
+    addActivityLog(user.id, 'Account unlock request resolved', 'Unlocked account: ' + snapshot.val().userName);
+  }, [user, can.manage_user_lock_status, addActivityLog]);
+
+  const cancelUnlockRequest = useCallback(async (requestId: string) => {
+    const snapshot = await get(ref(rtdb, 'unlockRequests/' + requestId));
+    const request = snapshot.val();
+    if (!user || !(user.role === 'Admin' || can.manage_user_lock_status || request?.userId === user.id)) throw new Error('Permission denied.');
+    if (!request || request.status !== 'pending') throw new Error('This request is no longer pending.');
+    await update(ref(rtdb, 'unlockRequests/' + requestId), { status: 'cancelled', handledBy: user.id, handledAt: new Date().toISOString() });
+    addActivityLog(user.id, 'Account unlock request cancelled', 'Account: ' + request.userName);
+  }, [user, can.manage_user_lock_status, addActivityLog]);
 
   const addUser = useCallback((userData: Omit<User, 'id' | 'avatar' | 'status'>) => {
     const newRef = push(ref(rtdb, 'users'));
@@ -524,7 +547,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const contextValue: AuthContextType = {
     user, loading: loading || !sessionHydrated || Boolean(storedUserId && user?.id !== storedUserId), users, roles, passwordResetRequests, unlockRequests, can, appName, appLogo, activeTheme, plannerNotificationCount,
     login, logout, updateProfile, requestPasswordReset,
-    resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, updateBranding, updateActiveTheme, addActivityLog, getVisibleUsers, getAssignableUsers, clearInventoryTransferHistory, markPlannerEventAsViewed,
+    resetPassword, lockUser, unlockUser, requestUnlock, resolveUnlockRequest, cancelUnlockRequest, addUser, updateUser, deleteUser, addRole, updateRole, deleteRole, updateBranding, updateActiveTheme, addActivityLog, getVisibleUsers, getAssignableUsers, clearInventoryTransferHistory, markPlannerEventAsViewed,
     updateUserViewPreference, markFeatureAsViewed
   };
 
