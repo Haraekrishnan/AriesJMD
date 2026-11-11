@@ -116,7 +116,7 @@ export default function EquipmentCategoryRegister({groups, activeTab, onTabChang
         <div className={styles.selectionList}>{unique.map(({key,item,g})=><label key={key}><input type="checkbox" disabled={busy} checked={selected.includes(key)} onChange={e=>setSelected(prev=>e.target.checked?[...prev,key]:prev.filter(k=>k!==key))}/><strong>{item.equipmentName||item.name||item.machineName||item.ariesId||item.id}</strong><span>{item.serialNumber||item.serialNo||item.imei||'—'} · {category?.name}</span></label>)}</div>
       </div>}
       {!unique.length && <p className={styles.empty}>No equipment in this category matches the filters. Add equipment or move items here from another category.</p>}
-      <UnifiedEquipmentTable key={activeTab} rows={pageRows} categoryName={category?.name || 'Equipment'} offset={(currentPage-1)*20} />
+      <UnifiedEquipmentTable key={activeTab} rows={pageRows} showCalibration={['ut-machines','dft-machines','anemometer'].includes(activeTab) || unique.some(row => ['utMachines','dftMachines','anemometers'].includes(row.g.source) || !!row.item.calibrationDueDate)} categoryName={category?.name || 'Equipment'} offset={(currentPage-1)*20} />
       <div className={styles.registerPagination}><span>{unique.length ? 'Showing '+((currentPage-1)*20+1)+'–'+Math.min(currentPage*20,unique.length) : '0'} of {unique.length} records</span><Button variant="outline" disabled={currentPage===1} onClick={()=>setPage(currentPage-1)}>Previous</Button><span>{currentPage} / {pageCount}</span><Button variant="outline" disabled={currentPage===pageCount} onClick={()=>setPage(currentPage+1)}>Next</Button></div>
     </>}
     </div></div>
