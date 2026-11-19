@@ -1,5 +1,8 @@
 
 'use client';
+import { get, ref } from 'firebase/database';
+import { rtdb } from '@/lib/rtdb';
+import { usageSnapshot } from '@/components/vehicle-usage-summary/safe-save';
 
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useAppContext } from '@/contexts/app-provider';
@@ -32,7 +35,10 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
     const vehicleRecord = record?.records?.[vehicle.id];
 
     // Snapshot saved data once per open vehicle/month session. Live updates must not replace the draft.
-    const initializedSession = useRef<string | null>(null);
+    const baseline = useRef('null');
+    const [loadingRecord, setLoadingRecord] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [saving, setSaving] = useState(false);
     const [cellStates, setCellStates] = useState<Record<string, any>>({});
     const [headerStates, setHeaderStates] = useState({
       jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0,
@@ -73,38 +79,26 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
     }, [monthlyTotalKm, monthlyTotalOvertime]);
 
     useEffect(() => {
-        if (!isOpen) {
-            initializedSession.current = null;
-            return;
-        }
-        const sessionKey = JSON.stringify([vehicle.id, monthKey]);
-        if (initializedSession.current === sessionKey) return;
-        initializedSession.current = sessionKey;
-        if (vehicleRecord) {
-            const newStates: Record<string, any> = {};
-            for (const day in vehicleRecord.days) {
-                newStates[`${day}-startKm`] = vehicleRecord.days[day].startKm || '';
-                newStates[`${day}-endKm`] = vehicleRecord.days[day].endKm || '';
-                newStates[`${day}-overtime`] = vehicleRecord.days[day].overtime || '';
-                newStates[`${day}-remarks`] = vehicleRecord.days[day].remarks || '';
-                newStates[`${day}-isHoliday`] = vehicleRecord.days[day].isHoliday || false;
-            }
-            setCellStates(newStates);
-            setHeaderStates({
-                jobNo: vehicleRecord.jobNo || '',
-                vehicleType: vehicleRecord.vehicleType || '',
-                extraKm: vehicleRecord.extraKm || 0,
-                headerOvertime: vehicleRecord.headerOvertime || '',
-                extraNight: vehicleRecord.extraNight || 0,
-                extraDays: vehicleRecord.extraDays || 0,
-                verifiedByName: vehicleRecord.verifiedBy?.name || '',
-                verifiedByDate: vehicleRecord.verifiedBy?.date ? parseISO(vehicleRecord.verifiedBy.date) : undefined,
+        if (!isOpen) return;
+        let active = true;
+        setLoadingRecord(true); setLoadError(''); setCellStates({});
+        get(ref(rtdb, 'vehicleUsageRecords/' + monthKey + '/records/' + vehicle.id)).then(snapshot => {
+            if (!active) return;
+            const record = snapshot.val();
+            baseline.current = usageSnapshot(record);
+            const cells: Record<string, any> = {};
+            Object.entries(record?.days || {}).forEach(([day, entry]: [string, any]) => {
+                if (!entry) return;
+                for (const field of ['startKm', 'endKm', 'overtime', 'remarks', 'isHoliday']) cells[day + '-' + field] = entry[field] ?? '';
             });
-        } else {
-            setCellStates({});
-            setHeaderStates({ jobNo: '', vehicleType: '', extraKm: 0, headerOvertime: '', extraNight: 0, extraDays: 0, verifiedByName: '', verifiedByDate: undefined });
-        }
-    }, [isOpen, vehicleRecord, vehicle.id, monthKey]);
+            setCellStates(cells);
+            setHeaderStates({ jobNo: record?.jobNo || '', vehicleType: record?.vehicleType || '', extraKm: record?.extraKm || 0,
+                headerOvertime: record?.headerOvertime || '', extraNight: record?.extraNight || 0, extraDays: record?.extraDays || 0,
+                verifiedByName: record?.verifiedBy?.name || '', verifiedByDate: record?.verifiedBy?.date ? parseISO(record.verifiedBy.date) : undefined });
+            setLoadingRecord(false);
+        }).catch(error => { if (active) { setLoadError('Unable to load the saved log. Close and reopen to retry.'); setLoadingRecord(false); } });
+        return () => { active = false; };
+    }, [isOpen, vehicle.id, monthKey]);
 
     const handleInputChange = (day: number, field: string, value: string | number | boolean) => {
         const dayKey = `${day}-${field}`;
@@ -165,7 +159,8 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
         setHeaderStates(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (loadingRecord || loadError || saving) return;
         if (!vehicle.id) return;
         const dataToSave: Partial<any> = {
             days: dayHeaders.reduce((acc, day) => {
@@ -189,13 +184,18 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                 date: headerStates.verifiedByDate ? headerStates.verifiedByDate.toISOString() : null
             }
         };
-        saveVehicleUsageRecord(monthKey, vehicle.id, dataToSave);
-        toast({ title: "Record Saved", description: "Vehicle usage data has been saved." });
-        setIsOpen(false);
+        setSaving(true);
+        try {
+            await saveVehicleUsageRecord(monthKey, vehicle.id, dataToSave, baseline.current);
+            toast({ title: 'Record Saved', description: 'Vehicle usage data has been saved.' });
+            setIsOpen(false);
+        } catch (error) {
+            toast({ title: 'Log not saved', description: error instanceof Error ? error.message : 'Save failed. Your entries are still open.', variant: 'destructive' });
+        } finally { setSaving(false); }
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={open => { if (!saving) setIsOpen(open); }}>
             <DialogContent className="max-w-7xl h-[95vh] flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
                 <DialogHeader>
                     <DialogTitle>Edit Vehicle Usage: {vehicle.vehicleNumber}</DialogTitle>
@@ -203,6 +203,9 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                         Log daily usage for {format(currentMonth, 'MMMM yyyy')}.
                     </DialogDescription>
                 </DialogHeader>
+                {loadingRecord && <p role="status">Loading saved vehicle log...</p>}
+                {loadError && <p role="alert" className="text-destructive">{loadError}</p>}
+                <fieldset disabled={loadingRecord || !!loadError || saving} style={{display:"contents"}}>
 
                 <div className="flex-1 overflow-hidden flex flex-col">
                     <div className="p-4 border rounded-md mb-4 bg-background grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -255,8 +258,9 @@ export default function EditVehicleUsageDialog({ isOpen, setIsOpen, vehicle, cur
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                    <Button onClick={handleSave}>Save Changes</Button>
+                    <Button disabled={loadingRecord || !!loadError || saving} onClick={handleSave}>{saving ? "Saving..." : "Save Changes"}</Button>
                 </DialogFooter>
+            </fieldset>
             </DialogContent>
         </Dialog>
     );

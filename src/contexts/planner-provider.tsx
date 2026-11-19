@@ -1,5 +1,6 @@
 
 'use client';
+import { prepareUsageSave } from '@/components/vehicle-usage-summary/safe-save';
 import { plannerDeletionUpdates } from '@/components/planner/planner-deletion';
 import { isJmsAssignee, canReassignJms } from '@/components/job-progress/jms-users';
 
@@ -59,7 +60,7 @@ type PlannerContextType = {
   addJobRecordPlant: (name: string) => void;
   deleteJobRecordPlant: (id: string, currentMonthKey?: string) => void;
   carryForwardPlantAssignments: (currentMonth: Date) => void;
-  saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => Promise<void>;
+  saveVehicleUsageRecord: (monthKey: string, vehicleId: string, data: any, expectedSnapshot: string) => Promise<void>;
   lockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   unlockVehicleUsageSheet: (monthKey: string, vehicleId: string) => void;
   createJobProgress: (data: Omit<JobProgress, 'id' | 'creatorId' | 'createdAt' | 'lastUpdated' | 'status'> & { steps: Omit<JobStep, 'id' | 'status'>[] }) => void;
@@ -513,16 +514,13 @@ export function PlannerProvider({ children }: { children: ReactNode }) {
         });
     }, [jobRecords, toast]);
     
-    const saveVehicleUsageRecord = useCallback(async (monthKey: string, vehicleId: string, data: Partial<VehicleUsageRecord['records'][string]>) => {
-        if (!user) return;
-        const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}`;
-        const updates = { 
-            ...data,
-            lastUpdated: new Date().toISOString(),
-            lastUpdatedById: user.id,
-        };
-        return update(ref(rtdb, path), updates);
-    }, [user]);
+    const saveVehicleUsageRecord = useCallback(async (monthKey: string, vehicleId: string, data: any, expectedSnapshot: string) => {
+        if (!user || !(user.role === 'Admin' || can.manage_vehicle_usage)) throw new Error('You do not have permission to save vehicle usage.');
+        const path = 'vehicleUsageRecords/' + monthKey + '/records/' + vehicleId;
+        const now = new Date().toISOString();
+        const result = await runTransaction(ref(rtdb, path), current => prepareUsageSave(current, expectedSnapshot, data, user.id, now), { applyLocally: false });
+        if (!result.committed) throw new Error('The log could not be saved. Please retry.');
+    }, [user, can.manage_vehicle_usage]);
     
     const lockVehicleUsageSheet = useCallback((monthKey: string, vehicleId: string) => {
         const path = `vehicleUsageRecords/${monthKey}/records/${vehicleId}/isLocked`;
